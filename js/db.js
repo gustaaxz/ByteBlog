@@ -53,6 +53,11 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     const content = document.getElementById('postContent').value;
     const isDraft = document.getElementById('postIsDraft').checked;
 
+    if (!content || content === '<p><br></p>') {
+        showToast("Por favor, escreva o conteúdo do artigo.", "error");
+        return;
+    }
+
     const postBtn = document.getElementById('submitPostBtn');
     postBtn.disabled = true;
     postBtn.textContent = 'Salvando...';

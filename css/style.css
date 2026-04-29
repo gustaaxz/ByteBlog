@@ -799,6 +799,8 @@ ul {
 .ql-snow .ql-stroke { stroke: var(--text-secondary); }
 .ql-snow .ql-fill { fill: var(--text-secondary); }
 .ql-snow .ql-picker { color: var(--text-secondary); }
+.ql-editor { color: var(--text-primary); min-height: 200px; }
+.ql-editor.ql-blank::before { color: var(--text-secondary); font-style: normal; }
 
 /* Draft Badge */
 .draft-badge {

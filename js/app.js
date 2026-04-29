@@ -86,6 +86,7 @@ loginBtn?.addEventListener('click', () => toggleAuthModal(true));
 openCreatePostModalBtn?.addEventListener('click', () => {
     document.getElementById('createPostForm').reset();
     document.getElementById('postIdInput').value = '';
+    if(quill) quill.root.innerHTML = '';
     document.getElementById('postModalTitle').textContent = 'Criar Novo Artigo';
     document.getElementById('submitPostBtn').textContent = 'Publicar Artigo';
     togglePostModal(true);
