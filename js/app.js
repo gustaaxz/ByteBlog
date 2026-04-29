@@ -278,8 +278,9 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts (Hero is now included)
-    const feedPosts = feedPostsToRender;
+    // Feed Posts - Garantindo que absolutamente TODOS os posts apareçam na lista, inclusive o destaque
+    const feedPosts = [...feedPostsToRender]; 
+    console.log(`Renderizando ${feedPosts.length} artigos no feed. O primeiro é: ${feedPosts[0]?.title}`);
 
     feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
