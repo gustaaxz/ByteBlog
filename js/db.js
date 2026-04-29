@@ -5,7 +5,10 @@ import {
     getDocs, 
     query, 
     orderBy, 
-    serverTimestamp 
+    serverTimestamp,
+    deleteDoc,
+    doc,
+    updateDoc
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 import { renderPosts, showToast, togglePostModal } from "./app.js";
 import { auth } from "./firebase-config.js";
@@ -73,3 +76,16 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
         postBtn.textContent = 'Publicar Artigo';
     }
 });
+
+// Admin Functions
+export const deletePost = async (postId) => {
+    try {
+        await deleteDoc(doc(db, 'posts', postId));
+        showToast("Artigo excluído com sucesso.", "success");
+        return true;
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        showToast("Erro ao excluir artigo.", "error");
+        return false;
+    }
+};

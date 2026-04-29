@@ -29,7 +29,9 @@
             <div class="nav-links" id="navLinks">
                 <a href="#" class="active" data-category="all">Todos</a>
                 <a href="#" data-category="Jogos">Jogos</a>
-                <a href="#" data-category="Informática">Informática</a>
+                <a href="#" data-category="Hardware">Hardware</a>
+                <a href="#" data-category="Programação">Programação</a>
+                <a href="#" data-category="Mobile">Mobile</a>
                 <a href="#" data-category="Notícias">Notícias</a>
             </div>
 
@@ -178,7 +180,9 @@
                     <select id="postCategory" required>
                         <option value="" disabled selected>Selecione uma categoria...</option>
                         <option value="Jogos">Jogos</option>
-                        <option value="Informática">Informática</option>
+                        <option value="Hardware">Hardware</option>
+                        <option value="Programação">Programação</option>
+                        <option value="Mobile">Mobile</option>
                         <option value="Notícias">Notícias do Dia a Dia</option>
                     </select>
                 </div>
@@ -193,6 +197,35 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="submitPostBtn">Publicar Artigo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content profile-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2>Meu Perfil</h2>
+            <form id="profileForm">
+                <div class="form-group" style="text-align: center; margin-bottom: 2rem;">
+                    <img id="profilePreview" src="https://ui-avatars.com/api/?name=User" alt="Preview" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary); margin-bottom: 1rem;">
+                </div>
+                <div class="form-group">
+                    <label for="profileName">Nome de Usuário</label>
+                    <input type="text" id="profileName" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileEmail">Email</label>
+                    <input type="email" id="profileEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileImage">URL da Foto de Perfil</label>
+                    <input type="url" id="profileImage" placeholder="https://exemplo.com/foto.jpg">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveProfileBtn">Salvar Alterações</button>
                 </div>
             </form>
         </div>

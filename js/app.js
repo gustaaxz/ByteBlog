@@ -1,9 +1,14 @@
-import { fetchPosts } from "./db.js";
+import { fetchPosts, deletePost } from "./db.js";
 import { logoutUser } from "./auth.js";
+import { auth } from "./firebase-config.js";
+
+// Constants
+const ADMIN_EMAIL = "gustavoooschmitt@gmail.com"; // Admin email
 
 // DOM Elements
 const authModal = document.getElementById('authModal');
 const postModal = document.getElementById('postModal');
+const profileModal = document.getElementById('profileModal');
 const loginBtn = document.getElementById('loginBtn');
 const openCreatePostModalBtn = document.getElementById('openCreatePostModal');
 const closeButtons = document.querySelectorAll('.close-modal, .close-modal-btn');
@@ -39,6 +44,26 @@ export const togglePostModal = (show) => {
     }
 };
 
+export const toggleProfileModal = (show) => {
+    if (show) {
+        profileModal.classList.add('active');
+        // Pre-fill profile info
+        if (auth.currentUser) {
+            document.getElementById('profileName').value = auth.currentUser.displayName || '';
+            document.getElementById('profileEmail').value = auth.currentUser.email || '';
+            document.getElementById('profileImage').value = auth.currentUser.photoURL || '';
+            document.getElementById('profilePreview').src = auth.currentUser.photoURL || `https://ui-avatars.com/api/?name=${auth.currentUser.displayName || 'User'}`;
+        }
+    } else {
+        profileModal.classList.remove('active');
+    }
+};
+
+// Listen for profile image input change to update preview
+document.getElementById('profileImage')?.addEventListener('input', (e) => {
+    document.getElementById('profilePreview').src = e.target.value || `https://ui-avatars.com/api/?name=${auth.currentUser?.displayName || 'User'}`;
+});
+
 loginBtn?.addEventListener('click', () => toggleAuthModal(true));
 openCreatePostModalBtn?.addEventListener('click', () => togglePostModal(true));
 
@@ -46,6 +71,7 @@ closeButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         toggleAuthModal(false);
         togglePostModal(false);
+        toggleProfileModal(false);
     });
 });
 
@@ -53,6 +79,7 @@ closeButtons.forEach(btn => {
 window.addEventListener('click', (e) => {
     if (e.target === authModal) toggleAuthModal(false);
     if (e.target === postModal) togglePostModal(false);
+    if (e.target === profileModal) toggleProfileModal(false);
 });
 
 // --- Auth Tabs Handling ---
@@ -100,8 +127,8 @@ export const updateNavbarForUser = (user) => {
         const userPhoto = user.photoURL || `https://ui-avatars.com/api/?name=${userName}&background=6366f1&color=fff`;
 
         authSection.innerHTML = `
-            <div class="user-profile">
-                <img src="${userPhoto}" alt="${userName}" title="${user.email}">
+            <div class="user-profile" id="openProfileBtn" title="Gerenciar Perfil">
+                <img src="${userPhoto}" alt="${userName}">
                 <span class="user-name">${userName}</span>
             </div>
             <button class="btn btn-outline" id="logoutBtn">Sair</button>
@@ -111,6 +138,13 @@ export const updateNavbarForUser = (user) => {
             logoutUser();
         });
 
+        document.getElementById('openProfileBtn').addEventListener('click', () => {
+            toggleProfileModal(true);
+        });
+
+        // Re-render posts to show admin buttons if user is admin
+        renderPosts(allPosts);
+
     } else {
         // User is logged out
         createPostContainer.classList.add('hidden');
@@ -118,6 +152,9 @@ export const updateNavbarForUser = (user) => {
             <button class="btn btn-primary" id="loginBtn">Entrar</button>
         `;
         document.getElementById('loginBtn').addEventListener('click', () => toggleAuthModal(true));
+        
+        // Re-render posts to hide admin buttons
+        if (allPosts.length > 0) renderPosts(allPosts);
     }
 };
 
@@ -138,6 +175,14 @@ export const renderPosts = (posts) => {
     posts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
         
+        // Check Admin
+        const isAdmin = auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
+        const adminHtml = isAdmin ? `
+            <div class="admin-actions">
+                <button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>
+            </div>
+        ` : '';
+
         const postEl = document.createElement('article');
         postEl.className = 'post-card';
         postEl.innerHTML = `
@@ -153,10 +198,25 @@ export const renderPosts = (posts) => {
                 <div class="post-author">
                     <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
                     <span>${post.authorName}</span>
+                    ${adminHtml}
                 </div>
             </div>
         `;
         postsGrid.appendChild(postEl);
+    });
+
+    // Attach Delete Event Listeners
+    document.querySelectorAll('.btn-admin-delete').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const postId = e.currentTarget.dataset.id;
+            if (confirm("Tem certeza que deseja excluir este artigo?")) {
+                const success = await deletePost(postId);
+                if (success) {
+                    allPosts = allPosts.filter(p => p.id !== postId);
+                    renderPosts(allPosts);
+                }
+            }
+        });
     });
 };
 
