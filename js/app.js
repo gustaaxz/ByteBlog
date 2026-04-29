@@ -270,7 +270,7 @@ export const updateNavbarForUser = (user) => {
                 toggleAdminModal(true);
             });
             // Listener de Denúncias no Painel Admin
-            document.querySelector('[data-target="adminReports"]')?.addEventListener('click', () => loadReports());
+            document.querySelector('[data-target="adminReports"]')?.addEventListener('click', () => renderAdminReports());
         }
 
         renderMagazine(allPosts); // Re-render to show admin actions
@@ -905,8 +905,9 @@ window.reportModalItem = async (type, targetId, postId = null) => {
     }
 };
 
-// Admin: Load Reports
-const loadReports = async () => {
+// Admin: Render Admin Reports
+const renderAdminReports = async () => {
+    console.log("Rendering Admin Reports - v3.0.0");
     const list = document.getElementById('reportsList');
     list.innerHTML = '<div class="loader"></div>';
     
@@ -920,19 +921,22 @@ const loadReports = async () => {
     
     reports.forEach(r => {
         const d = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
-        // Escape single quotes for the onclick string
         const escapedReason = (r.reason || '').replace(/'/g, "\\'");
         list.innerHTML += `
-            <div class="report-card">
+            <div class="report-card" style="border: 1px solid var(--glass-border); padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem; background: rgba(255,255,255,0.03);">
                 <div class="report-info">
-                    <h4>Denúncia de ${r.type === 'post' ? 'Artigo' : 'Comentário'}</h4>
+                    <h4 style="color: var(--accent-primary); margin-bottom: 0.5rem;">Denúncia de ${r.type === 'post' ? 'Artigo' : 'Comentário'}</h4>
                     <p><strong>Motivo:</strong> ${r.reason}</p>
                     <p><strong>Por:</strong> ${r.reporterName} em ${d}</p>
-                    <p style="font-size:0.7rem; margin-top:0.3rem;">ID Alvo: ${r.targetId}</p>
+                    <p style="font-size:0.7rem; margin-top:0.3rem; opacity: 0.5;">ID Alvo: ${r.targetId}</p>
                 </div>
-                <div class="report-actions" style="display:flex; gap:0.5rem;">
-                    <button class="btn btn-sm btn-accent" onclick="window.respondToReport('${r.id}', '${r.reporterId}', '${escapedReason}')">Responder</button>
-                    <button class="btn btn-sm btn-outline" onclick="window.ignoreReport('${r.id}', '${r.reporterId}', '${escapedReason}')">Ignorar</button>
+                <div class="report-actions" style="display:flex; gap:0.8rem; margin-top: 1rem;">
+                    <button class="btn btn-sm btn-accent" onclick="window.respondToReport('${r.id}', '${r.reporterId}', '${escapedReason}')" style="background: var(--accent-primary) !important;">
+                        <i class="ph ph-chat-centered-text"></i> Responder
+                    </button>
+                    <button class="btn btn-sm btn-outline" onclick="window.ignoreReport('${r.id}', '${r.reporterId}', '${escapedReason}')">
+                        <i class="ph ph-trash"></i> Ignorar
+                    </button>
                 </div>
             </div>
         `;
@@ -945,7 +949,7 @@ window.ignoreReport = async (reportId, reporterId = null, reason = "") => {
         const success = await ignoreReport(reportId, reporterId, reason);
         if(success) {
             showToast("Denúncia ignorada.");
-            loadReports();
+            renderAdminReports();
         }
     }
 };
@@ -959,7 +963,7 @@ window.respondToReport = async (reportId, reporterId, originalReason) => {
         // Optional: archive the report after responding
         if(confirm("Deseja arquivar esta denúncia agora que respondeu?")) {
             await deleteDoc(doc(db, 'reports', reportId));
-            loadReports();
+            renderAdminReports();
         }
         showToast("Resposta enviada!");
     } catch (e) {
