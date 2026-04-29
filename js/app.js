@@ -278,21 +278,20 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts - Garantindo que absolutamente TODOS os posts apareçam na lista, inclusive o destaque
-    const feedPosts = [...feedPostsToRender]; 
-    console.log(`Renderizando ${feedPosts.length} artigos no feed. O primeiro é: ${feedPosts[0]?.title}`);
+    // Feed Posts - SEM NENHUM SLICE OU FILTRO QUE REMOVA O PRIMEIRO POST
+    const feedPosts = sortedPosts.slice(0, currentlyDisplayedCount);
 
     feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
         
         // Admin Actions
         const isAuthor = auth.currentUser?.uid === post.authorId;
-        const canEdit = isAdmin || isAuthor; // Admin or the author can edit
+        const canEdit = isAdmin || isAuthor; 
         
         const adminHtml = canEdit ? `
             <div class="admin-actions">
                 <button class="btn-admin-edit" data-id="${post.id}" title="Editar"><i class="ph-fill ph-pencil-simple"></i></button>
-                ${isAdmin ? `<button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>` : ''}
+                <button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>
             </div>
         ` : '';
         
@@ -300,28 +299,26 @@ export const renderMagazine = (posts, updateHero = true) => {
 
         const postEl = document.createElement('article');
         postEl.className = 'post-card';
-        
-        // Extract raw text for excerpt (remove HTML tags from Quill)
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = post.content;
-        const rawText = tempDiv.textContent || tempDiv.innerText || '';
-        const excerpt = rawText.substring(0, 150) + (rawText.length > 150 ? '...' : '');
-
         postEl.innerHTML = `
-            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
+            <div class="post-image" onclick="openReadModal('${post.id}')" style="cursor:pointer;">
+                <img src="${post.imageUrl}" alt="${post.title}" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'">
+            </div>
             <div class="post-content">
                 <div class="post-meta">
                     <span class="post-category">${post.category}</span>
                     <span class="post-date">${dateStr}</span>
                 </div>
-                <h3 class="post-title" style="cursor:pointer;" onclick="openReadModal('${post.id}')">${post.title} ${draftBadge}</h3>
-                <p class="post-excerpt">${excerpt}</p>
-                
-                <div class="post-author">
-                    <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
-                    <span>${post.authorName}</span>
-                    <span style="margin-left: 1rem; color: var(--text-secondary); font-size: 0.8rem;"><i class="ph-fill ph-heart"></i> ${post.likes ? post.likes.length : 0}</span>
-                    <span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.8rem;"><i class="ph-fill ph-eye"></i> ${post.views || 0}</span>
+                <h3 onclick="openReadModal('${post.id}')" style="cursor:pointer;">${post.title} ${draftBadge}</h3>
+                <p>${post.content.replace(/<[^>]*>/g, '').substring(0, 120)}...</p>
+                <div class="post-footer">
+                    <div class="post-author">
+                        <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
+                        <span>${post.authorName}</span>
+                    </div>
+                    <div class="post-stats">
+                        <span title="Curtidas"><i class="ph-fill ph-heart"></i> ${post.likes ? post.likes.length : 0}</span>
+                        <span title="Visualizações"><i class="ph-fill ph-eye"></i> ${post.views || 0}</span>
+                    </div>
                     ${adminHtml}
                 </div>
             </div>
@@ -329,39 +326,43 @@ export const renderMagazine = (posts, updateHero = true) => {
         postsGrid.appendChild(postEl);
     });
 
-    // Attach Edit/Delete Listeners
+    // Attach Listeners - Garantindo que funcionem mesmo após re-render
+    attachPostListeners();
+};
+
+const attachPostListeners = () => {
     document.querySelectorAll('.btn-admin-delete').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
             const postId = e.currentTarget.dataset.id;
-            if (confirm("Tem certeza que deseja excluir este artigo?")) {
+            if (confirm("Tem certeza que deseja excluir este artigo permanentemente?")) {
                 const success = await deletePost(postId);
                 if (success) {
                     allPosts = allPosts.filter(p => p.id !== postId);
                     renderMagazine(allPosts);
+                    showToast("Artigo removido com sucesso!");
                 }
             }
-        });
+        };
     });
 
     document.querySelectorAll('.btn-admin-edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const postId = e.currentTarget.dataset.id;
             const post = allPosts.find(p => p.id === postId);
-            if(post) {
+            if (post) {
                 document.getElementById('postIdInput').value = post.id;
                 document.getElementById('postTitle').value = post.title;
                 document.getElementById('postCategory').value = post.category;
                 document.getElementById('postImage').value = post.imageUrl;
-                document.getElementById('postContent').value = post.content;
-                document.getElementById('postIsDraft').checked = post.isDraft || false;
-                
+                document.getElementById('postIsDraft').checked = post.isDraft;
                 if(quill) quill.root.innerHTML = post.content;
-                
                 document.getElementById('postModalTitle').textContent = 'Editar Artigo';
                 document.getElementById('submitPostBtn').textContent = 'Salvar Alterações';
                 togglePostModal(true);
             }
-        });
+        };
     });
 };
 
