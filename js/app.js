@@ -697,9 +697,12 @@ document.getElementById('likeBtn')?.addEventListener('click', async () => {
 });
 
 // Handle Post Submit (Moved from db.js for UI control)
+let isSubmittingPost = false;
 document.getElementById('createPostForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    if (isSubmittingPost) return;
+
     if (!auth.currentUser || (auth.currentUser.role !== 'admin' && auth.currentUser.role !== 'escritor')) {
         showToast("Você não tem permissão para publicar.", "error");
         return;
@@ -722,6 +725,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     }
 
     const postBtn = document.getElementById('submitPostBtn');
+    isSubmittingPost = true;
     postBtn.disabled = true;
     postBtn.textContent = 'Salvando...';
 
@@ -770,6 +774,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
         console.error("Error saving document: ", error);
         showToast("Erro ao salvar o artigo.", "error");
     } finally {
+        isSubmittingPost = false;
         postBtn.disabled = false;
         postBtn.textContent = 'Publicar Artigo';
     }
