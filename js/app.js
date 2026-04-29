@@ -1,4 +1,4 @@
-import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport } from "./db.js";
+import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport, fetchNotifications, markNotificationRead } from "./db.js";
 import { logoutUser } from "./auth.js";
 import { auth, db } from "./firebase-config.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
@@ -92,6 +92,12 @@ export const togglePublicProfileModal = (show) => {
     if(modal) modal.classList.toggle('active', show);
 };
 
+export const toggleNotifModal = (show) => {
+    const modal = document.getElementById('notifModal');
+    if(modal) modal.classList.toggle('active', show);
+    if(show) loadNotifications();
+};
+
 document.getElementById('profileImage')?.addEventListener('input', (e) => {
     document.getElementById('profilePreview').src = e.target.value || `https://ui-avatars.com/api/?name=${auth.currentUser?.displayName || 'User'}`;
 });
@@ -120,9 +126,9 @@ window.addEventListener('click', (e) => {
     if (e.target === authModal) toggleAuthModal(false);
     if (e.target === postModal) togglePostModal(false);
     if (e.target === profileModal) toggleProfileModal(false);
-    if (e.target === adminModal) toggleAdminModal(false);
     if (e.target === readPostModal) toggleReadModal(false);
     if (e.target === document.getElementById('publicProfileModal')) togglePublicProfileModal(false);
+    if (e.target === document.getElementById('notifModal')) toggleNotifModal(false);
 });
 
 // Auth Tabs
@@ -244,6 +250,7 @@ export const updateNavbarForUser = (user) => {
         }
 
         renderMagazine(allPosts); // Re-render to show admin actions
+        checkNotifications(); // Check notifications on login
         
         // Listeners para inputs de arquivo (UI feedback)
         document.getElementById('postImageFile')?.addEventListener('change', (e) => {
@@ -810,7 +817,7 @@ const loadReports = async () => {
                     <p style="font-size:0.7rem; margin-top:0.3rem;">ID Alvo: ${r.targetId}</p>
                 </div>
                 <div class="report-actions">
-                    <button class="btn btn-sm btn-outline" onclick="ignoreReport('${r.id}')">Ignorar</button>
+                    <button class="btn btn-sm btn-outline" onclick="window.ignoreReport('${r.id}', '${r.reporterId}', '${r.reason}')">Ignorar</button>
                 </div>
             </div>
         `;
@@ -818,13 +825,59 @@ const loadReports = async () => {
 };
 
 // Global for Admin Reports
-window.ignoreReport = async (reportId) => {
+window.ignoreReport = async (reportId, reporterId = null, reason = "") => {
     if(confirm("Deseja ignorar esta denúncia?")) {
-        const success = await ignoreReport(reportId);
+        const success = await ignoreReport(reportId, reporterId, reason);
         if(success) {
             showToast("Denúncia ignorada.");
             loadReports();
         }
+    }
+};
+
+// Task 18: Notifications Logic
+const loadNotifications = async () => {
+    if(!auth.currentUser) return;
+    const list = document.getElementById('notifList');
+    list.innerHTML = '<div class="loader"></div>';
+    
+    const notifications = await fetchNotifications(auth.currentUser.uid);
+    list.innerHTML = '';
+    
+    if(notifications.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-secondary); text-align:center; padding: 2rem;">Nenhuma notificação.</p>';
+        document.getElementById('notifBadge').style.display = 'none';
+        return;
+    }
+
+    const unread = notifications.filter(n => !n.read).length;
+    document.getElementById('notifBadge').style.display = unread > 0 ? 'block' : 'none';
+
+    notifications.forEach(n => {
+        const d = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
+        const opacity = n.read ? '0.6' : '1';
+        list.innerHTML += `
+            <div class="notif-item" style="padding:1rem; border-bottom:1px solid var(--glass-border); opacity:${opacity}; cursor:pointer;" onclick="window.markNotifRead('${n.id}')">
+                <p style="font-size:0.9rem;">${n.message}</p>
+                <span style="font-size:0.75rem; color:var(--text-secondary);">${d}</span>
+            </div>
+        `;
+    });
+};
+
+window.markNotifRead = async (id) => {
+    await markNotificationRead(id);
+    loadNotifications();
+};
+
+document.getElementById('notifBtn')?.addEventListener('click', () => toggleNotifModal(true));
+
+// Check for unread notifications on load
+const checkNotifications = async () => {
+    if(auth.currentUser) {
+        const notifications = await fetchNotifications(auth.currentUser.uid);
+        const unread = notifications.filter(n => !n.read).length;
+        document.getElementById('notifBadge').style.display = unread > 0 ? 'block' : 'none';
     }
 };
 

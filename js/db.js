@@ -280,10 +280,15 @@ export const fetchReports = async () => {
 };
 
 // Ignore Report
-export const ignoreReport = async (reportId) => {
+export const ignoreReport = async (reportId, reporterId = null, reason = "") => {
     try {
         const reportRef = doc(db, 'reports', reportId);
         await deleteDoc(reportRef);
+        
+        if(reporterId) {
+            await createNotification(reporterId, `Sua denúncia sobre "${reason}" foi analisada e arquivada pela moderação.`, 'info');
+        }
+        
         return true;
     } catch (error) {
         console.error("Error ignoring report:", error);
@@ -330,6 +335,49 @@ export const ratePost = async (postId, userId, rating) => {
         return true;
     } catch (error) {
         console.error("Error rating post:", error);
+        return false;
+    }
+};
+
+// --- Notifications ---
+
+// Create Notification
+export const createNotification = async (userId, message, type = 'info') => {
+    try {
+        await addDoc(collection(db, 'notifications'), {
+            userId,
+            message,
+            type,
+            read: false,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error creating notification:", error);
+    }
+};
+
+// Fetch User Notifications
+export const fetchNotifications = async (userId) => {
+    try {
+        const q = query(collection(db, 'notifications'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const notifications = [];
+        snap.forEach(d => notifications.push({ id: d.id, ...d.data() }));
+        return notifications;
+    } catch (error) {
+        console.error("Error fetching notifications:", error);
+        return [];
+    }
+};
+
+// Mark Notification as Read
+export const markNotificationRead = async (notificationId) => {
+    try {
+        const notifRef = doc(db, 'notifications', notificationId);
+        await updateDoc(notifRef, { read: true });
+        return true;
+    } catch (error) {
+        console.error("Error marking notification read:", error);
         return false;
     }
 };
