@@ -4,6 +4,41 @@ import { auth, db } from "./firebase-config.js";
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 import { uploadImage } from "./utils.js";
 
+// === THEME MANAGER ===
+const applyTheme = () => {
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        document.body.classList.add('light-theme');
+        if (themeToggle) themeToggle.innerHTML = '<i class="ph ph-sun"></i>';
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.body.classList.remove('light-theme');
+        if (themeToggle) themeToggle.innerHTML = '<i class="ph ph-moon"></i>';
+    }
+};
+
+// Handle clicks via delegation for robustness
+document.addEventListener('click', (e) => {
+    const toggle = e.target.closest('#themeToggle');
+    if (toggle) {
+        const isLight = document.body.classList.toggle('light-theme');
+        const theme = isLight ? 'light' : 'dark';
+        localStorage.setItem('theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+        toggle.innerHTML = isLight ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
+    }
+});
+
+// Run theme logic as soon as possible
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyTheme);
+} else {
+    applyTheme();
+}
+
 // DOM Elements
 const authModal = document.getElementById('authModal');
 const postModal = document.getElementById('postModal');
