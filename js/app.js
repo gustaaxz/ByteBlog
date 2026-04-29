@@ -267,10 +267,14 @@ export const updateNavbarForUser = (user) => {
                 <img src="${userPhoto}" alt="${userName}">
                 <span class="user-name">${userName}</span>
             </div>
-            <button class="btn btn-outline" id="logoutBtn">Sair</button>
         `;
 
-        document.getElementById('logoutBtn').addEventListener('click', () => logoutUser());
+        // The logout button is now inside the profile modal (handled globally in DOM or via dynamic listener)
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+            if(confirm("Deseja realmente sair?")) {
+                logoutUser();
+            }
+        });
         document.getElementById('openProfileBtn').addEventListener('click', () => {
             loadAuthorDashboard();
             toggleProfileModal(true);
