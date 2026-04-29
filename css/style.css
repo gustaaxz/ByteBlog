@@ -25,6 +25,18 @@
     --font-heading: 'Outfit', sans-serif;
 }
 
+body.light-theme {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -864,3 +876,62 @@ ul {
 .toast.show { transform: translateX(0); }
 .toast.error { border-left-color: #ef4444; }
 .toast.success { border-left-color: #10b981; }
+
+/* Reading Progress Bar */
+.reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 4px;
+    background: var(--gradient-brand);
+    z-index: 9999;
+    transition: width 0.1s ease;
+}
+
+/* Report Buttons */
+.btn-report {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.btn-report:hover {
+    color: #f59e0b; /* Amber */
+    background: rgba(245, 158, 11, 0.1);
+}
+
+/* Report Card in Admin */
+.report-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.report-info h4 {
+    margin-bottom: 0.3rem;
+    color: var(--text-primary);
+}
+
+.report-info p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.report-actions {
+    display: flex;
+    gap: 0.5rem;
+}

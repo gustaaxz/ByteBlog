@@ -50,6 +50,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     const postId = document.getElementById('postIdInput').value;
     const title = document.getElementById('postTitle').value;
     const category = document.getElementById('postCategory').value;
+    const tags = document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(t => t);
     let imageUrl = document.getElementById('postImage').value;
     const imageFile = document.getElementById('postImageFile').files[0];
     const content = document.getElementById('postContent').value;
@@ -75,6 +76,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
             await updateDoc(doc(db, 'posts', postId), {
                 title,
                 category,
+                tags,
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
                 content,
                 isDraft
@@ -85,6 +87,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
             await addDoc(postsCol, {
                 title,
                 category,
+                tags,
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
                 content,
                 isDraft,
@@ -216,6 +219,113 @@ export const deleteComment = async (postId, commentId) => {
     } catch (error) {
         console.error("Error deleting comment:", error);
         showToast("Erro ao excluir comentário.", "error");
+        return false;
+    }
+};
+
+// Edit Comment
+export const editComment = async (postId, commentId, newText) => {
+    try {
+        const commentRef = doc(db, `posts/${postId}/comments`, commentId);
+        await updateDoc(commentRef, {
+            text: newText,
+            updatedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Error editing comment:", error);
+        showToast("Erro ao editar comentário.", "error");
+        return false;
+    }
+};
+
+// Report Content
+export const reportContent = async (type, targetId, reason, postId = null) => {
+    try {
+        const reportsCol = collection(db, 'reports');
+        await addDoc(reportsCol, {
+            type, // 'post' or 'comment'
+            targetId,
+            postId, // if it's a comment, we need the post id to find it
+            reason,
+            reporterId: auth.currentUser?.uid || 'anonymous',
+            reporterName: auth.currentUser?.displayName || 'Anônimo',
+            status: 'pending',
+            createdAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Error reporting content:", error);
+        return false;
+    }
+};
+
+// Fetch Reports
+export const fetchReports = async () => {
+    try {
+        const reportsCol = collection(db, 'reports');
+        const q = query(reportsCol, orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const reports = [];
+        snap.forEach(d => reports.push({ id: d.id, ...d.data() }));
+        return reports;
+    } catch (error) {
+        console.error("Error fetching reports:", error);
+        return [];
+    }
+};
+
+// Ignore Report
+export const ignoreReport = async (reportId) => {
+    try {
+        const reportRef = doc(db, 'reports', reportId);
+        await deleteDoc(reportRef);
+        return true;
+    } catch (error) {
+        console.error("Error ignoring report:", error);
+        return false;
+    }
+};
+
+// Toggle Bookmark
+export const toggleBookmark = async (postId, userId, isBookmarked) => {
+    try {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, {
+            bookmarks: isBookmarked ? arrayRemove(postId) : arrayUnion(postId)
+        });
+        return true;
+    } catch (error) {
+        console.error("Error toggling bookmark:", error);
+        return false;
+    }
+};
+
+// Fetch User Posts (for Public Profile)
+export const fetchUserPosts = async (authorId) => {
+    try {
+        const q = query(collection(db, 'posts'), where('authorId', '==', authorId), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const posts = [];
+        snap.forEach(d => posts.push({ id: d.id, ...d.data() }));
+        return posts;
+    } catch (error) {
+        console.error("Error fetching user posts:", error);
+        return [];
+    }
+};
+
+// Rate Post
+export const ratePost = async (postId, userId, rating) => {
+    try {
+        const postRef = doc(db, 'posts', postId);
+        // We'll store ratings as an object mapping userId to rating value
+        await updateDoc(postRef, {
+            [`ratings.${userId}`]: rating
+        });
+        return true;
+    } catch (error) {
+        console.error("Error rating post:", error);
         return false;
     }
 };
