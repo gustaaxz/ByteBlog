@@ -663,7 +663,24 @@ ul {
     line-height: 1.2;
 }
 
+/* Comment Delete Button */
+.btn-delete-comment {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: color 0.3s;
+    opacity: 0.5;
+}
+
+.btn-delete-comment:hover {
+    color: #ef4444;
+    opacity: 1;
+}
+
 .comment-card {
+    position: relative;
     display: flex;
     gap: 1rem;
     padding: 1rem;

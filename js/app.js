@@ -1,4 +1,4 @@
-import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments } from "./db.js";
+import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment } from "./db.js";
 import { logoutUser } from "./auth.js";
 import { auth } from "./firebase-config.js";
 
@@ -213,6 +213,17 @@ export const updateNavbarForUser = (user) => {
         }
 
         renderMagazine(allPosts); // Re-render to show admin actions
+        
+        // Listeners para inputs de arquivo (UI feedback)
+        document.getElementById('postImageFile')?.addEventListener('change', (e) => {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('postImageFileName').textContent = fileName ? `Selecionado: ${fileName}` : '';
+        });
+        
+        document.getElementById('profileImageFile')?.addEventListener('change', (e) => {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('profileImageFileName').textContent = fileName ? `Selecionado: ${fileName}` : '';
+        });
 
     } else {
         createPostContainer.classList.add('hidden');
@@ -499,6 +510,14 @@ const loadComments = async (postId) => {
     
     comments.forEach(c => {
         const d = c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
+        const isAdmin = auth.currentUser?.role === 'admin';
+        
+        const deleteBtn = isAdmin ? `
+            <button class="btn-delete-comment" data-id="${c.id}" title="Excluir comentário">
+                <i class="ph-fill ph-trash"></i>
+            </button>
+        ` : '';
+
         list.innerHTML += `
             <div class="comment-card">
                 <img src="${c.authorPhoto}" alt="${c.authorName}">
@@ -506,8 +525,23 @@ const loadComments = async (postId) => {
                     <h4>${c.authorName} <span>${d}</span></h4>
                     <p>${c.text}</p>
                 </div>
+                ${deleteBtn}
             </div>
         `;
+    });
+
+    // Attach Comment Delete Listeners
+    document.querySelectorAll('.btn-delete-comment').forEach(btn => {
+        btn.onclick = async (e) => {
+            const commentId = e.currentTarget.dataset.id;
+            if(confirm("Deseja excluir este comentário?")) {
+                const success = await deleteComment(currentReadPostId, commentId);
+                if(success) {
+                    showToast("Comentário excluído.");
+                    loadComments(currentReadPostId);
+                }
+            }
+        };
     });
 };
 

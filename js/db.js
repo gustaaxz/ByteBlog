@@ -15,6 +15,7 @@ import {
     arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 import { renderMagazine, showToast, togglePostModal } from "./app.js";
+import { uploadImage } from "./utils.js";
 
 // Collection Reference
 const postsCol = collection(db, 'posts');
@@ -49,7 +50,8 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     const postId = document.getElementById('postIdInput').value;
     const title = document.getElementById('postTitle').value;
     const category = document.getElementById('postCategory').value;
-    const imageUrl = document.getElementById('postImage').value;
+    let imageUrl = document.getElementById('postImage').value;
+    const imageFile = document.getElementById('postImageFile').files[0];
     const content = document.getElementById('postContent').value;
     const isDraft = document.getElementById('postIsDraft').checked;
 
@@ -63,6 +65,11 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     postBtn.textContent = 'Salvando...';
 
     try {
+        // Se houver arquivo selecionado, faz o upload primeiro
+        if (imageFile) {
+            postBtn.textContent = 'Enviando imagem...';
+            imageUrl = await uploadImage(imageFile);
+        }
         if(postId) {
             // Edit Mode
             await updateDoc(doc(db, 'posts', postId), {
@@ -197,5 +204,18 @@ export const fetchComments = async (postId) => {
     } catch (error) {
         console.error("Error fetching comments:", error);
         return [];
+    }
+};
+
+// Admin Delete Comment
+export const deleteComment = async (postId, commentId) => {
+    try {
+        const commentRef = doc(db, `posts/${postId}/comments`, commentId);
+        await deleteDoc(commentRef);
+        return true;
+    } catch (error) {
+        console.error("Error deleting comment:", error);
+        showToast("Erro ao excluir comentário.", "error");
+        return false;
     }
 };

@@ -11,6 +11,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 import { showToast, toggleAuthModal, updateNavbarForUser, toggleProfileModal } from "./app.js";
+import { uploadImage } from "./utils.js";
 
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
@@ -126,13 +127,19 @@ document.getElementById('profileForm')?.addEventListener('submit', async (e) => 
 
     const newName = document.getElementById('profileName').value.trim();
     const newEmail = document.getElementById('profileEmail').value.trim();
-    const newPhoto = document.getElementById('profileImage').value.trim();
+    let newPhoto = document.getElementById('profileImage').value.trim();
+    const photoFile = document.getElementById('profileImageFile').files[0];
 
     const btn = document.getElementById('saveProfileBtn');
     btn.disabled = true;
     btn.textContent = 'Salvando...';
 
     try {
+        // Se houver um arquivo, faz o upload primeiro
+        if (photoFile) {
+            btn.textContent = 'Enviando imagem...';
+            newPhoto = await uploadImage(photoFile);
+        }
         // Update Auth Profile
         await updateProfile(user, {
             displayName: newName,
