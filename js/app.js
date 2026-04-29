@@ -278,7 +278,7 @@ export const renderMagazine = (posts, updateHero = true) => {
     }
 
     // Feed Posts
-    const feedPosts = (updateHero && sortedPosts.length > 0) ? feedPostsToRender.slice(1) : feedPostsToRender;
+    const feedPosts = feedPostsToRender;
 
     feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
