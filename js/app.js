@@ -1,132 +1,163 @@
-import { fetchPosts, deletePost } from "./db.js";
+import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments } from "./db.js";
 import { logoutUser } from "./auth.js";
 import { auth } from "./firebase-config.js";
-
-// Constants
-const ADMIN_EMAIL = "gustavoooschmitt@gmail.com"; // Admin email
 
 // DOM Elements
 const authModal = document.getElementById('authModal');
 const postModal = document.getElementById('postModal');
 const profileModal = document.getElementById('profileModal');
+const adminModal = document.getElementById('adminModal');
+const readPostModal = document.getElementById('readPostModal');
 const loginBtn = document.getElementById('loginBtn');
 const openCreatePostModalBtn = document.getElementById('openCreatePostModal');
 const closeButtons = document.querySelectorAll('.close-modal, .close-modal-btn');
 const authTabs = document.querySelectorAll('.auth-tabs .tab');
 const authForms = document.querySelectorAll('.auth-form');
-const navLinks = document.querySelectorAll('.nav-links a');
+const navLinks = document.querySelectorAll('.categories-container a');
 const authSection = document.getElementById('authSection');
 const createPostContainer = document.getElementById('createPostContainer');
 const postsGrid = document.getElementById('postsGrid');
+const heroSection = document.getElementById('heroSection');
+const searchInput = document.getElementById('searchInput');
 
-let allPosts = []; // Local cache for filtering
+let allPosts = []; 
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initial fetch
     allPosts = await fetchPosts();
+    renderMagazine(allPosts);
 });
 
 // --- Modal Handling ---
-export const toggleAuthModal = (show) => {
-    if (show) {
-        authModal.classList.add('active');
-    } else {
-        authModal.classList.remove('active');
-    }
+export const toggleModal = (modal, show) => {
+    if(show) modal.classList.add('active');
+    else modal.classList.remove('active');
 };
 
-export const togglePostModal = (show) => {
-    if (show) {
-        postModal.classList.add('active');
-    } else {
-        postModal.classList.remove('active');
-    }
-};
+export const toggleAuthModal = (show) => toggleModal(authModal, show);
+export const togglePostModal = (show) => toggleModal(postModal, show);
+export const toggleAdminModal = (show) => toggleModal(adminModal, show);
+export const toggleReadModal = (show) => toggleModal(readPostModal, show);
 
 export const toggleProfileModal = (show) => {
-    if (show) {
-        profileModal.classList.add('active');
-        // Pre-fill profile info
-        if (auth.currentUser) {
-            document.getElementById('profileName').value = auth.currentUser.displayName || '';
-            document.getElementById('profileEmail').value = auth.currentUser.email || '';
-            document.getElementById('profileImage').value = auth.currentUser.photoURL || '';
-            document.getElementById('profilePreview').src = auth.currentUser.photoURL || `https://ui-avatars.com/api/?name=${auth.currentUser.displayName || 'User'}`;
-        }
-    } else {
-        profileModal.classList.remove('active');
+    toggleModal(profileModal, show);
+    if (show && auth.currentUser) {
+        document.getElementById('profileName').value = auth.currentUser.displayName || '';
+        document.getElementById('profileEmail').value = auth.currentUser.email || '';
+        document.getElementById('profileImage').value = auth.currentUser.photoURL || '';
+        document.getElementById('profilePreview').src = auth.currentUser.photoURL || `https://ui-avatars.com/api/?name=${auth.currentUser.displayName || 'User'}`;
+        
+        const badge = document.getElementById('userRoleBadge');
+        if(badge) badge.textContent = `Cargo: ${auth.currentUser.role ? auth.currentUser.role.toUpperCase() : 'REDATOR'}`;
     }
 };
 
-// Listen for profile image input change to update preview
 document.getElementById('profileImage')?.addEventListener('input', (e) => {
     document.getElementById('profilePreview').src = e.target.value || `https://ui-avatars.com/api/?name=${auth.currentUser?.displayName || 'User'}`;
 });
 
 loginBtn?.addEventListener('click', () => toggleAuthModal(true));
-openCreatePostModalBtn?.addEventListener('click', () => togglePostModal(true));
+openCreatePostModalBtn?.addEventListener('click', () => {
+    document.getElementById('createPostForm').reset();
+    document.getElementById('postIdInput').value = '';
+    document.getElementById('postModalTitle').textContent = 'Criar Novo Artigo';
+    document.getElementById('submitPostBtn').textContent = 'Publicar Artigo';
+    togglePostModal(true);
+});
 
 closeButtons.forEach(btn => {
     btn.addEventListener('click', () => {
         toggleAuthModal(false);
         togglePostModal(false);
         toggleProfileModal(false);
+        toggleAdminModal(false);
+        toggleReadModal(false);
     });
 });
 
-// Close modal on outside click
 window.addEventListener('click', (e) => {
     if (e.target === authModal) toggleAuthModal(false);
     if (e.target === postModal) togglePostModal(false);
     if (e.target === profileModal) toggleProfileModal(false);
+    if (e.target === adminModal) toggleAdminModal(false);
+    if (e.target === readPostModal) toggleReadModal(false);
 });
 
-// --- Auth Tabs Handling ---
+// Auth Tabs
 authTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-        // Remove active class from all
         authTabs.forEach(t => t.classList.remove('active'));
         authForms.forEach(f => f.classList.remove('active'));
-        
-        // Add to clicked
         tab.classList.add('active');
         const targetFormId = tab.dataset.tab === 'login' ? 'loginForm' : 'registerForm';
         document.getElementById(targetFormId).classList.add('active');
     });
 });
 
-// --- Category Filtering ---
+// Admin Tabs
+document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.admin-view').forEach(v => v.style.display = 'none');
+        
+        e.target.classList.add('active');
+        document.getElementById(e.target.dataset.target).style.display = 'block';
+    });
+});
+
+// Admin Change Role
+document.getElementById('changeRoleForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('adminUserEmail').value;
+    const role = document.getElementById('adminUserRole').value;
+    await changeUserRole(email, role);
+});
+
+// Search
+searchInput?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const filtered = allPosts.filter(p => 
+        p.title.toLowerCase().includes(term) || 
+        p.content.toLowerCase().includes(term)
+    );
+    renderMagazine(filtered, false); // false means don't touch hero if searching specific things, or just re-render feed
+});
+
+// Categories
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
         navLinks.forEach(l => l.classList.remove('active'));
         link.classList.add('active');
-        
         const category = link.dataset.category;
-        filterPosts(category);
+        
+        if (category === 'all') {
+            renderMagazine(allPosts);
+        } else {
+            const filtered = allPosts.filter(post => post.category === category);
+            renderMagazine(filtered);
+        }
     });
 });
 
-const filterPosts = (category) => {
-    if (category === 'all') {
-        renderPosts(allPosts);
-    } else {
-        const filtered = allPosts.filter(post => post.category === category);
-        renderPosts(filtered);
-    }
-};
-
-// --- UI Updates based on Auth State ---
+// UI Update based on Auth
 export const updateNavbarForUser = (user) => {
     if (user) {
-        // User is logged in
-        createPostContainer.classList.remove('hidden');
-        
+        const canPost = user.role === 'admin' || user.role === 'escritor';
+        if(canPost) {
+            createPostContainer.classList.remove('hidden');
+        } else {
+            createPostContainer.classList.add('hidden');
+        }
+
+        const isAdmin = user.role === 'admin';
+        const adminBtnHtml = isAdmin ? `<button class="btn btn-outline" id="openAdminBtn" title="Dashboard Admin"><i class="ph ph-shield-check"></i></button>` : '';
+
         const userName = user.displayName || user.email.split('@')[0];
-        const userPhoto = user.photoURL || `https://ui-avatars.com/api/?name=${userName}&background=6366f1&color=fff`;
+        const userPhoto = user.photoURL || `https://ui-avatars.com/api/?name=${userName}&background=0ea5e9&color=fff`;
 
         authSection.innerHTML = `
+            ${adminBtnHtml}
             <div class="user-profile" id="openProfileBtn" title="Gerenciar Perfil">
                 <img src="${userPhoto}" alt="${userName}">
                 <span class="user-name">${userName}</span>
@@ -134,70 +165,95 @@ export const updateNavbarForUser = (user) => {
             <button class="btn btn-outline" id="logoutBtn">Sair</button>
         `;
 
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            logoutUser();
-        });
+        document.getElementById('logoutBtn').addEventListener('click', () => logoutUser());
+        document.getElementById('openProfileBtn').addEventListener('click', () => toggleProfileModal(true));
+        
+        if(isAdmin) {
+            document.getElementById('openAdminBtn').addEventListener('click', () => {
+                document.getElementById('statTotalPosts').textContent = allPosts.length;
+                toggleAdminModal(true);
+            });
+        }
 
-        document.getElementById('openProfileBtn').addEventListener('click', () => {
-            toggleProfileModal(true);
-        });
-
-        // Re-render posts to show admin buttons if user is admin
-        renderPosts(allPosts);
+        renderMagazine(allPosts); // Re-render to show admin actions
 
     } else {
-        // User is logged out
         createPostContainer.classList.add('hidden');
-        authSection.innerHTML = `
-            <button class="btn btn-primary" id="loginBtn">Entrar</button>
-        `;
+        authSection.innerHTML = `<button class="btn btn-primary" id="loginBtn">Entrar / Cadastrar</button>`;
         document.getElementById('loginBtn').addEventListener('click', () => toggleAuthModal(true));
         
-        // Re-render posts to hide admin buttons
-        if (allPosts.length > 0) renderPosts(allPosts);
+        if (allPosts.length > 0) renderMagazine(allPosts);
     }
 };
 
-// --- Render Posts ---
-export const renderPosts = (posts) => {
-    postsGrid.innerHTML = ''; // Clear loader
+// Render Magazine
+export const renderMagazine = (posts, updateHero = true) => {
+    postsGrid.innerHTML = '';
     
     if (posts.length === 0) {
-        postsGrid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">
-                <i class="ph ph-article" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
-                <p>Nenhum artigo encontrado nesta categoria.</p>
-            </div>
-        `;
+        if(updateHero) heroSection.innerHTML = `<div style="padding: 4rem; text-align: center; color: var(--text-secondary);">Nenhum artigo encontrado.</div>`;
+        postsGrid.innerHTML = `<p style="color: var(--text-secondary);">Nenhuma notícia para exibir.</p>`;
         return;
     }
 
-    posts.forEach(post => {
+    const sortedPosts = [...posts].sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+
+    // Hero Post (The newest one)
+    if(updateHero && sortedPosts.length > 0) {
+        const heroPost = sortedPosts[0];
+        const dateStr = heroPost.createdAt ? new Date(heroPost.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
+        
+        heroSection.innerHTML = `
+            <img src="${heroPost.imageUrl}" alt="${heroPost.title}" class="hero-bg" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=1200'">
+            <div class="hero-overlay" style="cursor:pointer;" onclick="openReadModal('${heroPost.id}')"></div>
+            <div class="hero-content-inner">
+                <span class="hero-category">${heroPost.category}</span>
+                <h1 style="cursor:pointer;" onclick="openReadModal('${heroPost.id}')">${heroPost.title}</h1>
+                <div class="hero-meta">
+                    <img src="${heroPost.authorPhoto}" alt="${heroPost.authorName}" style="width:30px; height:30px; border-radius:50%;">
+                    <span>${heroPost.authorName}</span>
+                    <span>•</span>
+                    <span>${dateStr}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Feed Posts (Everything else, or everything if search)
+    const feedPosts = (updateHero && sortedPosts.length > 0) ? sortedPosts.slice(1) : sortedPosts;
+
+    feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
         
-        // Check Admin
-        const isAdmin = auth.currentUser && auth.currentUser.email === ADMIN_EMAIL;
-        const adminHtml = isAdmin ? `
+        // Admin Actions
+        const isAdmin = auth.currentUser?.role === 'admin';
+        const isAuthor = auth.currentUser?.uid === post.authorId;
+        const canEdit = isAdmin || isAuthor; // Admin or the author can edit
+        
+        const adminHtml = canEdit ? `
             <div class="admin-actions">
-                <button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>
+                <button class="btn-admin-edit" data-id="${post.id}" title="Editar"><i class="ph-fill ph-pencil-simple"></i></button>
+                ${isAdmin ? `<button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>` : ''}
             </div>
         ` : '';
 
         const postEl = document.createElement('article');
         postEl.className = 'post-card';
         postEl.innerHTML = `
-            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'">
+            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
             <div class="post-content">
                 <div class="post-meta">
                     <span class="post-category">${post.category}</span>
                     <span class="post-date">${dateStr}</span>
                 </div>
-                <h3 class="post-title">${post.title}</h3>
+                <h3 class="post-title" style="cursor:pointer;" onclick="openReadModal('${post.id}')">${post.title}</h3>
                 <p class="post-excerpt">${post.content}</p>
                 
                 <div class="post-author">
                     <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
                     <span>${post.authorName}</span>
+                    <span style="margin-left: 1rem; color: var(--text-secondary); font-size: 0.8rem;"><i class="ph-fill ph-heart"></i> ${post.likes ? post.likes.length : 0}</span>
+                    <span style="margin-left: 0.5rem; color: var(--text-secondary); font-size: 0.8rem;"><i class="ph-fill ph-eye"></i> ${post.views || 0}</span>
                     ${adminHtml}
                 </div>
             </div>
@@ -205,7 +261,21 @@ export const renderPosts = (posts) => {
         postsGrid.appendChild(postEl);
     });
 
-    // Attach Delete Event Listeners
+    // Populate Sidebar Popular Posts (Based on views or just top 3)
+    const popularContainer = document.getElementById('popularPosts');
+    popularContainer.innerHTML = '';
+    const popularPosts = [...sortedPosts].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0, 3);
+    
+    popularPosts.forEach((p, i) => {
+        popularContainer.innerHTML += `
+            <div class="mini-post" style="cursor:pointer;" onclick="openReadModal('${p.id}')">
+                <span class="mini-post-num">0${i+1}</span>
+                <a class="mini-post-title">${p.title}</a>
+            </div>
+        `;
+    });
+
+    // Attach Edit/Delete Listeners
     document.querySelectorAll('.btn-admin-delete').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const postId = e.currentTarget.dataset.id;
@@ -213,24 +283,174 @@ export const renderPosts = (posts) => {
                 const success = await deletePost(postId);
                 if (success) {
                     allPosts = allPosts.filter(p => p.id !== postId);
-                    renderPosts(allPosts);
+                    renderMagazine(allPosts);
                 }
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-admin-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const postId = e.currentTarget.dataset.id;
+            const post = allPosts.find(p => p.id === postId);
+            if(post) {
+                document.getElementById('postIdInput').value = post.id;
+                document.getElementById('postTitle').value = post.title;
+                document.getElementById('postCategory').value = post.category;
+                document.getElementById('postImage').value = post.imageUrl;
+                document.getElementById('postContent').value = post.content;
+                
+                document.getElementById('postModalTitle').textContent = 'Editar Artigo';
+                document.getElementById('submitPostBtn').textContent = 'Salvar Alterações';
+                togglePostModal(true);
             }
         });
     });
 };
 
-// --- Toast Notification ---
+// Global function to open modal (so inline onclick works)
+let currentReadPostId = null;
+window.openReadModal = async (postId) => {
+    const post = allPosts.find(p => p.id === postId);
+    if(!post) return;
+    
+    currentReadPostId = postId;
+    
+    // Increment View
+    await incrementViewCount(postId);
+    post.views = (post.views || 0) + 1; // Update locally
+    
+    // Populate Modal
+    document.getElementById('readCategory').textContent = post.category;
+    document.getElementById('readTitle').textContent = post.title;
+    document.getElementById('readAuthorName').textContent = post.authorName;
+    document.getElementById('readAuthorImg').src = post.authorPhoto;
+    document.getElementById('readDate').textContent = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
+    document.getElementById('readViews').textContent = post.views;
+    document.getElementById('readImage').src = post.imageUrl;
+    document.getElementById('readContent').textContent = post.content;
+    
+    // Likes logic
+    const likes = post.likes || [];
+    const userId = auth.currentUser?.uid;
+    const isLiked = userId ? likes.includes(userId) : false;
+    
+    const likeIcon = document.getElementById('likeIcon');
+    document.getElementById('likeCount').textContent = likes.length;
+    
+    if(isLiked) {
+        likeIcon.classList.remove('ph');
+        likeIcon.classList.add('ph-fill');
+        likeIcon.style.color = '#ef4444';
+    } else {
+        likeIcon.classList.remove('ph-fill');
+        likeIcon.classList.add('ph');
+        likeIcon.style.color = 'inherit';
+    }
+    
+    // Fetch Comments
+    loadComments(postId);
+    
+    toggleReadModal(true);
+};
+
+// Handle Like Button
+document.getElementById('likeBtn')?.addEventListener('click', async () => {
+    if(!auth.currentUser) {
+        showToast("Faça login para curtir artigos.", "error");
+        toggleAuthModal(true);
+        return;
+    }
+    
+    const post = allPosts.find(p => p.id === currentReadPostId);
+    if(!post) return;
+    
+    const userId = auth.currentUser.uid;
+    const likes = post.likes || [];
+    const isLiked = likes.includes(userId);
+    
+    const success = await toggleLike(currentReadPostId, userId, isLiked);
+    if(success) {
+        if(isLiked) {
+            post.likes = likes.filter(id => id !== userId);
+        } else {
+            post.likes.push(userId);
+        }
+        
+        // Update UI
+        const likeIcon = document.getElementById('likeIcon');
+        document.getElementById('likeCount').textContent = post.likes.length;
+        if(!isLiked) {
+            likeIcon.classList.remove('ph');
+            likeIcon.classList.add('ph-fill');
+            likeIcon.style.color = '#ef4444';
+        } else {
+            likeIcon.classList.remove('ph-fill');
+            likeIcon.classList.add('ph');
+            likeIcon.style.color = 'inherit';
+        }
+        renderMagazine(allPosts, false); // update main feed subtly
+    }
+});
+
+// Handle Comment Submit
+document.getElementById('commentForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(!auth.currentUser) {
+        showToast("Faça login para comentar.", "error");
+        toggleAuthModal(true);
+        return;
+    }
+    
+    const input = document.getElementById('commentInput');
+    const text = input.value.trim();
+    if(!text) return;
+    
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    
+    const success = await addComment(currentReadPostId, text);
+    if(success) {
+        input.value = '';
+        showToast("Comentário enviado!", "success");
+        loadComments(currentReadPostId);
+    }
+    
+    btn.disabled = false;
+});
+
+const loadComments = async (postId) => {
+    const list = document.getElementById('commentsList');
+    list.innerHTML = '<div class="loader" style="margin: 1rem auto; width: 20px; height: 20px;"></div>';
+    
+    const comments = await fetchComments(postId);
+    document.getElementById('commentCount').textContent = comments.length;
+    
+    list.innerHTML = '';
+    if(comments.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">Nenhum comentário ainda. Seja o primeiro!</p>';
+        return;
+    }
+    
+    comments.forEach(c => {
+        const d = c.createdAt ? new Date(c.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
+        list.innerHTML += `
+            <div class="comment-card">
+                <img src="${c.authorPhoto}" alt="${c.authorName}">
+                <div class="comment-card-content">
+                    <h4>${c.authorName} <span>${d}</span></h4>
+                    <p>${c.text}</p>
+                </div>
+            </div>
+        `;
+    });
+};
+
+// Toast
 export const showToast = (message, type = 'success') => {
     const toast = document.getElementById('toast');
-    
     const icon = type === 'success' ? '<i class="ph-fill ph-check-circle" style="color: #10b981;"></i>' : '<i class="ph-fill ph-warning-circle" style="color: #ef4444;"></i>';
-    
     toast.innerHTML = `${icon} <span>${message}</span>`;
     toast.className = `toast show ${type}`;
-    
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
+    setTimeout(() => toast.classList.remove('show'), 3000);
 };
