@@ -41,11 +41,11 @@ window.googleTranslateElementInit = () => {
 };
 
 // Initialize Quill
-let quill;
-document.addEventListener('DOMContentLoaded', async () => {
-    // Basic Quill Setup
-    if(document.getElementById('quillEditor') && !quill) {
-        quill = new Quill('#quillEditor', {
+window.quillInstance = window.quillInstance || null;
+
+const initQuill = () => {
+    if(document.getElementById('quillEditor') && !window.quillInstance) {
+        window.quillInstance = new Quill('#quillEditor', {
             theme: 'snow',
             placeholder: 'Escreva seu artigo com formatação rica...',
             modules: {
@@ -58,10 +58,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ]
             }
         });
-        
-        // Sync Quill to Hidden Input on change
-        quill.on('text-change', () => {
-            document.getElementById('postContent').value = quill.root.innerHTML;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+    initQuill();
+    
+    // Sync Quill to Hidden Input on change
+    if(window.quillInstance) {
+        window.quillInstance.on('text-change', () => {
+            const content = window.quillInstance.root.innerHTML;
+            document.getElementById('postContent').value = content;
         });
     }
 
@@ -105,11 +112,16 @@ document.getElementById('profileImage')?.addEventListener('input', (e) => {
 
 loginBtn?.addEventListener('click', () => toggleAuthModal(true));
 openCreatePostModalBtn?.addEventListener('click', () => {
+    if(!auth.currentUser) {
+        showToast("Faça login para criar artigos.", "error");
+        toggleAuthModal(true);
+        return;
+    }
+    document.getElementById('postModalTitle').textContent = "Criar Novo Artigo";
     document.getElementById('createPostForm').reset();
     document.getElementById('postIdInput').value = '';
-    if(quill) quill.root.innerHTML = '';
-    document.getElementById('postModalTitle').textContent = 'Criar Novo Artigo';
-    document.getElementById('submitPostBtn').textContent = 'Publicar Artigo';
+    initQuill();
+    if(window.quillInstance) window.quillInstance.setContents([]);
     togglePostModal(true);
 });
 
@@ -467,15 +479,16 @@ const attachPostListeners = () => {
             const postId = e.currentTarget.dataset.id;
             const post = allPosts.find(p => p.id === postId);
             if (post) {
+                document.getElementById('postModalTitle').textContent = "Editar Artigo";
                 document.getElementById('postIdInput').value = post.id;
                 document.getElementById('postTitle').value = post.title;
                 document.getElementById('postCategory').value = post.category;
+                document.getElementById('postTags').value = post.tags ? post.tags.join(', ') : '';
                 document.getElementById('postImage').value = post.imageUrl;
-                document.getElementById('postIsDraft').checked = post.isDraft;
-                if(quill) quill.root.innerHTML = post.content;
-                document.getElementById('postModalTitle').textContent = 'Editar Artigo';
-                document.getElementById('submitPostBtn').textContent = 'Salvar Alterações';
-                togglePostModal(true);
+                
+                initQuill();
+                if(window.quillInstance) window.quillInstance.root.innerHTML = post.content;
+                postModal.classList.add('active');
             }
         };
     });
@@ -659,10 +672,12 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     const tags = document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(t => t);
     let imageUrl = document.getElementById('postImage').value;
     const imageFile = document.getElementById('postImageFile').files[0];
-    const content = document.getElementById('postContent').value;
+    
+    // Sync Quill before getting value
+    const content = window.quillInstance ? window.quillInstance.root.innerHTML : document.getElementById('postContent').value;
     const isDraft = document.getElementById('postIsDraft').checked;
 
-    if (!content || content === '<p><br></p>') {
+    if (!content || content === '<p><br></p>' || content.trim() === '') {
         showToast("Por favor, escreva o conteúdo do artigo.", "error");
         return;
     }
@@ -1054,7 +1069,51 @@ const loadAuthorDashboard = async () => {
     });
     document.getElementById('userTotalViews').textContent = views;
     document.getElementById('userTotalLikes').textContent = likes;
+
+    // Load Favorites
+    const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+    const bookmarks = userDoc.exists() ? (userDoc.data().bookmarks || []) : [];
+    const favoritePosts = allPosts.filter(p => bookmarks.includes(p.id));
+    
+    const favList = document.getElementById('favoritesList');
+    favList.innerHTML = '';
+    if(favoritePosts.length === 0) {
+        favList.innerHTML = '<p style="color:var(--text-secondary); font-size:0.85rem;">Nenhum artigo favoritado.</p>';
+    } else {
+        favoritePosts.forEach(p => {
+            favList.innerHTML += `
+                <div style="padding:0.8rem; border:1px solid var(--glass-border); border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" onclick="toggleProfileModal(false); openReadModal('${p.id}')">
+                    <div>
+                        <h4 style="font-size:0.9rem;">${p.title}</h4>
+                        <p style="font-size:0.75rem; color:var(--text-secondary);">${p.category}</p>
+                    </div>
+                    <i class="ph-fill ph-caret-right" style="color:var(--accent-primary);"></i>
+                </div>
+            `;
+        });
+    }
 };
+
+// Profile Tabs Switcher
+document.querySelectorAll('.profile-tabs .tab').forEach(tab => {
+    tab.onclick = () => {
+        document.querySelectorAll('.profile-tabs .tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.color = 'var(--text-secondary)';
+        });
+        tab.classList.add('active');
+        tab.style.color = 'inherit';
+        
+        const target = tab.dataset.tab;
+        if(target === 'stats') {
+            document.getElementById('profileStatsView').style.display = 'block';
+            document.getElementById('profileFavoritesView').style.display = 'none';
+        } else {
+            document.getElementById('profileStatsView').style.display = 'none';
+            document.getElementById('profileFavoritesView').style.display = 'block';
+        }
+    };
+});
 
 // Toast
 export const showToast = (message, type = 'success') => {
