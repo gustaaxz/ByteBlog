@@ -904,16 +904,39 @@ window.openPublicProfile = async (authorId) => {
     document.getElementById('pubAuthorName').textContent = "Carregando...";
     document.getElementById('pubAuthorPosts').innerHTML = '<div class="loader"></div>';
     
-    // Fetch User Info (from first post found or from users collection)
-    const userDoc = await getDoc(doc(db, "users", authorId));
-    if(userDoc.exists()) {
-        const data = userDoc.data();
-        document.getElementById('pubAuthorImg').src = data.photoURL || `https://ui-avatars.com/api/?name=${data.username}`;
-        document.getElementById('pubAuthorName').textContent = data.username;
-        document.getElementById('pubAuthorRole').textContent = data.role;
+    let authorData = {
+        username: "Usuário",
+        photoURL: "https://ui-avatars.com/api/?name=Usuario",
+        role: "Leitor"
+    };
+
+    // 1. Try to get data from allPosts (fallback)
+    const postWithAuthor = allPosts.find(p => p.authorId === authorId);
+    if(postWithAuthor) {
+        authorData.username = postWithAuthor.authorName;
+        authorData.photoURL = postWithAuthor.authorPhoto;
     }
 
-    const posts = await fetchUserPosts(authorId);
+    // 2. Try to Fetch User Info from Firestore (more accurate but might be restricted)
+    try {
+        const userDoc = await getDoc(doc(db, "users", authorId));
+        if(userDoc.exists()) {
+            const data = userDoc.data();
+            authorData.username = data.username || authorData.username;
+            authorData.photoURL = data.photoURL || authorData.photoURL;
+            authorData.role = data.role || authorData.role;
+        }
+    } catch (error) {
+        console.warn("Could not fetch user doc, using fallback info.");
+    }
+
+    // Update Header
+    document.getElementById('pubAuthorImg').src = authorData.photoURL;
+    document.getElementById('pubAuthorName').textContent = authorData.username;
+    document.getElementById('pubAuthorRole').textContent = authorData.role;
+
+    // 3. Get author posts (using local filter for speed and robustness)
+    const posts = allPosts.filter(p => p.authorId === authorId);
     document.getElementById('pubPostCount').textContent = posts.length;
     
     let totalLikes = 0;
@@ -936,14 +959,18 @@ window.openPublicProfile = async (authorId) => {
 
     const list = document.getElementById('pubAuthorPosts');
     list.innerHTML = '';
-    posts.slice(0, 5).forEach(p => {
-        list.innerHTML += `
-            <div style="padding:0.8rem; border-bottom:1px solid var(--glass-border); cursor:pointer;" onclick="togglePublicProfileModal(false); openReadModal('${p.id}')">
-                <h4 style="font-size:0.95rem;">${p.title}</h4>
-                <p style="font-size:0.8rem; color:var(--text-secondary);">${p.category}</p>
-            </div>
-        `;
-    });
+    if(posts.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding:1rem;">Este autor ainda não publicou artigos.</p>';
+    } else {
+        posts.slice(0, 5).forEach(p => {
+            list.innerHTML += `
+                <div style="padding:0.8rem; border-bottom:1px solid var(--glass-border); cursor:pointer;" onclick="togglePublicProfileModal(false); openReadModal('${p.id}')">
+                    <h4 style="font-size:0.9rem;">${p.title}</h4>
+                    <span style="font-size:0.75rem; color:var(--accent-primary);">${p.category}</span>
+                </div>
+            `;
+        });
+    }
 };
 
 // Task 4: Report Item

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'byteblog-cache-v2.4.5';
+const CACHE_NAME = 'byteblog-cache-v2.4.6';
 const ASSETS = [
     '/',
     '/index.html',
