@@ -299,27 +299,34 @@ export const renderMagazine = (posts, updateHero = true) => {
 
         const postEl = document.createElement('article');
         postEl.className = 'post-card';
+        
+        // Extract raw text for excerpt
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = post.content;
+        const rawText = tempDiv.textContent || tempDiv.innerText || '';
+        const excerpt = rawText.substring(0, 120) + (rawText.length > 120 ? '...' : '');
+
         postEl.innerHTML = `
-            <div class="post-image" onclick="openReadModal('${post.id}')" style="cursor:pointer;">
-                <img src="${post.imageUrl}" alt="${post.title}" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'">
-            </div>
+            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
             <div class="post-content">
                 <div class="post-meta">
                     <span class="post-category">${post.category}</span>
                     <span class="post-date">${dateStr}</span>
                 </div>
-                <h3 onclick="openReadModal('${post.id}')" style="cursor:pointer;">${post.title} ${draftBadge}</h3>
-                <p>${post.content.replace(/<[^>]*>/g, '').substring(0, 120)}...</p>
-                <div class="post-footer">
+                <h3 class="post-title" onclick="openReadModal('${post.id}')" style="cursor:pointer;">${post.title} ${draftBadge}</h3>
+                <p class="post-excerpt">${excerpt}</p>
+                <div class="post-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: auto;">
                     <div class="post-author">
                         <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
                         <span>${post.authorName}</span>
                     </div>
-                    <div class="post-stats">
-                        <span title="Curtidas"><i class="ph-fill ph-heart"></i> ${post.likes ? post.likes.length : 0}</span>
-                        <span title="Visualizações"><i class="ph-fill ph-eye"></i> ${post.views || 0}</span>
+                    <div class="post-actions-group" style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="post-stats" style="display: flex; gap: 0.5rem; color: var(--text-secondary); font-size: 0.85rem;">
+                            <span title="Curtidas"><i class="ph-fill ph-heart"></i> ${post.likes ? post.likes.length : 0}</span>
+                            <span title="Visualizações"><i class="ph-fill ph-eye"></i> ${post.views || 0}</span>
+                        </div>
+                        ${adminHtml}
                     </div>
-                    ${adminHtml}
                 </div>
             </div>
         `;
