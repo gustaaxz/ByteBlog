@@ -1,6 +1,7 @@
-import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost } from "./db.js";
+import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport } from "./db.js";
 import { logoutUser } from "./auth.js";
-import { auth } from "./firebase-config.js";
+import { auth, db } from "./firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 
 // DOM Elements
 const authModal = document.getElementById('authModal');
@@ -24,6 +25,7 @@ const loadMoreBtn = document.getElementById('loadMoreBtn');
 let allPosts = []; 
 let currentlyDisplayedCount = 5; // Pagination step
 let currentCategoryFilter = 'all';
+let scrollObserver;
 
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
@@ -67,18 +69,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- Modal Handling ---
-export const toggleModal = (modal, show) => {
-    if(show) modal.classList.add('active');
-    else modal.classList.remove('active');
-};
-
-export const toggleAuthModal = (show) => toggleModal(authModal, show);
-export const togglePostModal = (show) => toggleModal(postModal, show);
-export const toggleAdminModal = (show) => toggleModal(adminModal, show);
-export const toggleReadModal = (show) => toggleModal(readPostModal, show);
+export const toggleAuthModal = (show) => authModal.classList.toggle('active', show);
+export const togglePostModal = (show) => postModal.classList.toggle('active', show);
+export const toggleAdminModal = (show) => adminModal.classList.toggle('active', show);
+export const toggleReadModal = (show) => readPostModal.classList.toggle('active', show);
 
 export const toggleProfileModal = (show) => {
-    toggleModal(profileModal, show);
+    profileModal.classList.toggle('active', show);
     if (show && auth.currentUser) {
         document.getElementById('profileName').value = auth.currentUser.displayName || '';
         document.getElementById('profileEmail').value = auth.currentUser.email || '';
@@ -88,6 +85,11 @@ export const toggleProfileModal = (show) => {
         const badge = document.getElementById('userRoleBadge');
         if(badge) badge.textContent = `Cargo: ${auth.currentUser.role ? auth.currentUser.role.toUpperCase() : 'REDATOR'}`;
     }
+};
+
+export const togglePublicProfileModal = (show) => {
+    const modal = document.getElementById('publicProfileModal');
+    if(modal) modal.classList.toggle('active', show);
 };
 
 document.getElementById('profileImage')?.addEventListener('input', (e) => {
@@ -237,6 +239,8 @@ export const updateNavbarForUser = (user) => {
                 document.getElementById('statTotalPosts').textContent = allPosts.length;
                 toggleAdminModal(true);
             });
+            // Listener de Denúncias no Painel Admin
+            document.querySelector('[data-target="adminReports"]')?.addEventListener('click', () => loadReports());
         }
 
         renderMagazine(allPosts); // Re-render to show admin actions
@@ -255,22 +259,11 @@ export const updateNavbarForUser = (user) => {
     } else {
         createPostContainer.classList.add('hidden');
         authSection.innerHTML = `<button class="btn btn-primary" id="loginBtn">Entrar / Cadastrar</button>`;
-        document.getElementById('loginBtn').addEventListener('click', () => toggleAuthModal(true));
+        document.getElementById('loginBtn')?.addEventListener('click', () => toggleAuthModal(true));
         
         if (allPosts.length > 0) renderMagazine(allPosts);
-        
-        // Listeners de Denúncias no Painel Admin
-        document.querySelector('[data-target="adminReports"]')?.addEventListener('click', () => loadReports());
     }
 };
-
-// Modals toggles
-export const toggleAuthModal = (show) => authModal.classList.toggle('active', show);
-export const togglePostModal = (show) => postModal.classList.toggle('active', show);
-export const toggleProfileModal = (show) => profileModal.classList.toggle('active', show);
-export const toggleAdminModal = (show) => adminModal.classList.toggle('active', show);
-export const toggleReadModal = (show) => readPostModal.classList.toggle('active', show);
-export const togglePublicProfileModal = (show) => document.getElementById('publicProfileModal').classList.toggle('active', show);
 
 // Render Magazine
 export const renderMagazine = (posts, updateHero = true) => {
@@ -303,13 +296,17 @@ export const renderMagazine = (posts, updateHero = true) => {
         if(sortedPosts.length > currentlyDisplayedCount) {
             loadMoreBtn.style.display = 'block';
             loadMoreBtn.textContent = 'Carregando mais...';
-            const observer = new IntersectionObserver((entries) => {
-                if(entries[0].isIntersecting) {
-                    currentlyDisplayedCount += 5;
-                    renderMagazine(allPosts, false);
-                }
-            }, { threshold: 1.0 });
-            observer.observe(loadMoreBtn);
+            
+            if(!scrollObserver) {
+                scrollObserver = new IntersectionObserver((entries) => {
+                    if(entries[0].isIntersecting) {
+                        currentlyDisplayedCount += 5;
+                        renderMagazine(allPosts, false);
+                    }
+                }, { threshold: 0.1 });
+            }
+            scrollObserver.disconnect();
+            scrollObserver.observe(loadMoreBtn);
         } else {
             loadMoreBtn.style.display = 'none';
         }

@@ -66,12 +66,14 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     postBtn.textContent = 'Salvando...';
 
     try {
+
         // Se houver arquivo selecionado, faz o upload primeiro
         if (imageFile) {
             postBtn.textContent = 'Enviando imagem...';
             imageUrl = await uploadImage(imageFile);
         }
         if(postId) {
+
             // Edit Mode
             await updateDoc(doc(db, 'posts', postId), {
                 title,
@@ -83,6 +85,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
             });
             showToast("Artigo atualizado com sucesso!", "success");
         } else {
+
             // Create Mode
             await addDoc(postsCol, {
                 title,
@@ -103,6 +106,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
 
         e.target.reset();
         togglePostModal(false);
+        
         // We will need to re-fetch and re-render. We can simply trigger a page reload or fetch again.
         setTimeout(() => window.location.reload(), 1000); // Simple reload for now to see fresh data
     } catch (error) {
