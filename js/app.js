@@ -1046,20 +1046,27 @@ window.onscroll = () => {
 };
 
 // Task 7: Theme Switcher
-const themeToggle = document.getElementById('themeToggle');
-const currentTheme = localStorage.getItem('theme') || 'dark';
+const initTheme = () => {
+    const themeToggle = document.getElementById('themeToggle');
+    const currentTheme = localStorage.getItem('theme') || 'dark';
 
-if(currentTheme === 'light') {
-    document.body.classList.add('light-theme');
-    themeToggle.innerHTML = '<i class="ph ph-sun"></i>';
-}
+    if(currentTheme === 'light') {
+        document.body.classList.add('light-theme');
+        if(themeToggle) themeToggle.innerHTML = '<i class="ph ph-sun"></i>';
+    } else {
+        document.body.classList.remove('light-theme');
+        if(themeToggle) themeToggle.innerHTML = '<i class="ph ph-moon"></i>';
+    }
 
-themeToggle?.addEventListener('click', () => {
-    document.body.classList.toggle('light-theme');
-    const theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
-    localStorage.setItem('theme', theme);
-    themeToggle.innerHTML = theme === 'light' ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
-});
+    themeToggle?.addEventListener('click', () => {
+        document.body.classList.toggle('light-theme');
+        const theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+        localStorage.setItem('theme', theme);
+        themeToggle.innerHTML = theme === 'light' ? '<i class="ph ph-sun"></i>' : '<i class="ph ph-moon"></i>';
+    });
+};
+
+initTheme();
 
 // Task 16: Load Author Dashboard
 const loadAuthorDashboard = async () => {
