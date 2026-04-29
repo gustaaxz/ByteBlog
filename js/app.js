@@ -278,7 +278,7 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts
+    // Feed Posts (Hero is now included)
     const feedPosts = feedPostsToRender;
 
     feedPosts.forEach(post => {
@@ -326,20 +326,6 @@ export const renderMagazine = (posts, updateHero = true) => {
             </div>
         `;
         postsGrid.appendChild(postEl);
-    });
-
-    // Populate Sidebar Popular Posts (Based on views or just top 3)
-    const popularContainer = document.getElementById('popularPosts');
-    popularContainer.innerHTML = '';
-    const popularPosts = [...sortedPosts].sort((a,b) => (b.views || 0) - (a.views || 0)).slice(0, 3);
-    
-    popularPosts.forEach((p, i) => {
-        popularContainer.innerHTML += `
-            <div class="mini-post" style="cursor:pointer;" onclick="openReadModal('${p.id}')">
-                <span class="mini-post-num">0${i+1}</span>
-                <a class="mini-post-title">${p.title}</a>
-            </div>
-        `;
     });
 
     // Attach Edit/Delete Listeners
