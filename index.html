@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Byte Blog - Tecnologia, Jogos e Notícias</title>
+    <meta name="description" content="O seu portal de notícias sobre tecnologia, informática, jogos e o dia a dia.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Phosphor Icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">
+                <i class="ph-fill ph-code"></i>
+                Byte<span>Blog</span>
+            </a>
+            
+            <div class="nav-links" id="navLinks">
+                <a href="#" class="active" data-category="all">Todos</a>
+                <a href="#" data-category="Jogos">Jogos</a>
+                <a href="#" data-category="Informática">Informática</a>
+                <a href="#" data-category="Notícias">Notícias</a>
+            </div>
+
+            <div class="auth-section" id="authSection">
+                <!-- Logged Out View -->
+                <button class="btn btn-primary" id="loginBtn">Entrar</button>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Fique por dentro das <span class="gradient-text">novidades</span></h1>
+                <p>Artigos sobre desenvolvimento, games, hardware e notícias diárias do mundo da tecnologia.</p>
+            </div>
+        </section>
+
+        <!-- Create Post Button (Only visible when logged in) -->
+        <div class="actions-container hidden" id="createPostContainer">
+            <button class="btn btn-accent" id="openCreatePostModal">
+                <i class="ph ph-plus-circle"></i> Criar Novo Artigo
+            </button>
+        </div>
+
+        <!-- Posts Grid -->
+        <section class="posts-section">
+            <div class="posts-grid" id="postsGrid">
+                <!-- Posts will be injected here via JS -->
+                <div class="loader" id="postsLoader"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo">
+                    <i class="ph-fill ph-code"></i>
+                    Byte<span>Blog</span>
+                </div>
+                <p>O seu espaço diário para tecnologia e informação.</p>
+            </div>
+            
+            <div class="footer-links">
+                <div class="link-group">
+                    <h3>Suporte</h3>
+                    <a href="#">FAQ</a>
+                    <a href="#">Central de Ajuda</a>
+                    <a href="#">Reportar Bug</a>
+                </div>
+                <div class="link-group">
+                    <h3>Contato</h3>
+                    <a href="#">Fale Conosco</a>
+                    <a href="#">Trabalhe Conosco</a>
+                    <a href="#">Anuncie</a>
+                </div>
+                <div class="link-group">
+                    <h3>Legal</h3>
+                    <a href="#">Termos de Uso</a>
+                    <a href="#">Privacidade</a>
+                    <a href="#">Cookies</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Byte Blog. Todos os direitos reservados.</p>
+            <div class="social-links">
+                <a href="#"><i class="ph ph-twitter-logo"></i></a>
+                <a href="#"><i class="ph ph-github-logo"></i></a>
+                <a href="#"><i class="ph ph-discord-logo"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+
+    <!-- Auth Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content auth-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <div class="auth-tabs">
+                <button class="tab active" data-tab="login">Login</button>
+                <button class="tab" data-tab="register">Cadastro</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Senha</label>
+                    <input type="password" id="loginPassword" required placeholder="Sua senha secreta">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Entrar</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerName">Nome de Usuário</label>
+                    <input type="text" id="registerName" required placeholder="Como devemos te chamar?">
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Senha</label>
+                    <input type="password" id="registerPassword" required placeholder="Mínimo de 6 caracteres" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Criar Conta</button>
+            </form>
+
+            <div class="auth-divider">
+                <span>ou continue com</span>
+            </div>
+
+            <button id="googleSignIn" class="btn btn-outline full-width google-btn">
+                <i class="ph-fill ph-google-logo"></i> Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Create Post Modal -->
+    <div class="modal" id="postModal">
+        <div class="modal-content post-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2>Criar Novo Artigo</h2>
+            <form id="createPostForm">
+                <div class="form-group">
+                    <label for="postTitle">Título do Artigo</label>
+                    <input type="text" id="postTitle" required placeholder="Ex: O futuro da Inteligência Artificial">
+                </div>
+                <div class="form-group">
+                    <label for="postCategory">Categoria</label>
+                    <select id="postCategory" required>
+                        <option value="" disabled selected>Selecione uma categoria...</option>
+                        <option value="Jogos">Jogos</option>
+                        <option value="Informática">Informática</option>
+                        <option value="Notícias">Notícias do Dia a Dia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="postImage">URL da Imagem de Capa (opcional)</label>
+                    <input type="url" id="postImage" placeholder="https://exemplo.com/imagem.jpg">
+                </div>
+                <div class="form-group">
+                    <label for="postContent">Conteúdo</label>
+                    <textarea id="postContent" required placeholder="Escreva seu artigo aqui..." rows="10"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitPostBtn">Publicar Artigo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts (Type Module for Firebase) -->
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/db.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
