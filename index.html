@@ -332,11 +332,17 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-actions" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-outline" id="logoutBtn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);"><i class="ph ph-sign-out"></i> Sair da Conta</button>
-                    <div style="flex: 1;"></div>
-                    <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="saveProfileBtn">Salvar Alterações</button>
+                <div class="modal-actions" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" id="saveProfileBtn" style="width: 100%; padding: 1rem; font-size: 1rem;">Salvar Alterações</button>
+                    
+                    <div class="danger-zone" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" class="btn btn-outline" id="logoutBtn" style="color: #ef4444; border: none; background: none; padding: 0.5rem; gap: 0.5rem;">
+                            <i class="ph ph-sign-out"></i> Sair da Conta
+                        </button>
+                        <button type="button" class="btn btn-outline close-modal-btn" style="border: none; background: none; padding: 0.5rem; opacity: 0.7;">
+                            Cancelar
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -505,6 +511,6 @@
     <!-- Scripts -->
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script type="module" src="js/app.js?v=2.4.0"></script>
+    <script type="module" src="js/app.js?v=2.4.1"></script>
 </body>
 </html>
