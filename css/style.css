@@ -234,6 +234,49 @@ ul {
 @media (max-width: 768px) {
     .search-bar { display: none; }
     .mobile-menu-btn { display: block; }
+
+    .categories-nav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--glass-border);
+        border-bottom: 1px solid var(--glass-border);
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .categories-nav.active {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .categories-container {
+        flex-direction: column;
+        padding: 0;
+        gap: 0;
+    }
+
+    .categories-container a {
+        padding: 1.2rem 2rem;
+        width: 100%;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .categories-container a.active::after {
+        width: 4px;
+        height: 100%;
+        left: 0;
+        top: 0;
+        border-radius: 0;
+    }
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* === Buttons === */

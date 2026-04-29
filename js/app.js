@@ -1,7 +1,8 @@
-import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport, fetchNotifications, markNotificationRead } from "./db.js";
+import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport, fetchNotifications, markNotificationRead, createNotification } from "./db.js";
 import { logoutUser } from "./auth.js";
 import { auth, db } from "./firebase-config.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+import { uploadImage } from "./utils.js";
 
 // DOM Elements
 const authModal = document.getElementById('authModal');
@@ -43,7 +44,7 @@ window.googleTranslateElementInit = () => {
 let quill;
 document.addEventListener('DOMContentLoaded', async () => {
     // Basic Quill Setup
-    if(document.getElementById('quillEditor')) {
+    if(document.getElementById('quillEditor') && !quill) {
         quill = new Quill('#quillEditor', {
             theme: 'snow',
             placeholder: 'Escreva seu artigo com formatação rica...',
@@ -139,6 +140,29 @@ authTabs.forEach(tab => {
         tab.classList.add('active');
         const targetFormId = tab.dataset.tab === 'login' ? 'loginForm' : 'registerForm';
         document.getElementById(targetFormId).classList.add('active');
+    });
+});
+
+// Mobile Menu Toggle
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const categoriesNav = document.querySelector('.categories-nav');
+
+mobileMenuBtn?.addEventListener('click', () => {
+    categoriesNav.classList.toggle('active');
+    const icon = mobileMenuBtn.querySelector('i');
+    if(categoriesNav.classList.contains('active')) {
+        icon.className = 'ph ph-x';
+    } else {
+        icon.className = 'ph ph-list';
+    }
+});
+
+// Close mobile menu on category click
+document.querySelectorAll('.categories-container a').forEach(link => {
+    link.addEventListener('click', () => {
+        categoriesNav.classList.remove('active');
+        const icon = mobileMenuBtn?.querySelector('i');
+        if(icon) icon.className = 'ph ph-list';
     });
 });
 
@@ -298,6 +322,17 @@ export const renderMagazine = (posts, updateHero = true) => {
     // Pagination logic
     const feedPostsToRender = sortedPosts.slice(0, currentlyDisplayedCount);
     
+    const formatRelativeTime = (timestamp) => {
+        if(!timestamp) return 'Agora';
+        const now = new Date();
+        const diff = Math.floor((now - new Date(timestamp.seconds * 1000)) / 1000);
+        
+        if (diff < 60) return 'há poucos segundos';
+        if (diff < 3600) return `há ${Math.floor(diff / 60)} min`;
+        if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
+        return new Date(timestamp.seconds * 1000).toLocaleDateString('pt-BR');
+    };
+    
     // Task 20: Infinite Scroll (replacing simple button)
     if(loadMoreBtn) {
         if(sortedPosts.length > currentlyDisplayedCount) {
@@ -382,7 +417,7 @@ export const renderMagazine = (posts, updateHero = true) => {
                 <div class="post-meta">
                     <span class="post-category">${post.category}</span>
                     <span class="post-date">${dateStr}</span>
-                    <span style="margin-left:auto; font-size:0.75rem; color:var(--text-secondary);"><i class="ph ph-clock"></i> ${readingTime} min</span>
+                    <span style="margin-left:auto; font-size:0.75rem; color:var(--text-secondary);"><i class="ph ph-clock"></i> ${formatRelativeTime(post.createdAt)}</span>
                 </div>
                 <h3 class="post-title" onclick="openReadModal('${post.id}')" style="cursor:pointer;">${post.title} ${draftBadge}</h3>
                 <div class="post-tags" style="margin-bottom: 0.5rem; font-size: 0.7rem; color: var(--accent-primary); font-weight: 600;">${tagsHtml}</div>
@@ -609,6 +644,83 @@ document.getElementById('likeBtn')?.addEventListener('click', async () => {
     }
 });
 
+// Handle Post Submit (Moved from db.js for UI control)
+document.getElementById('createPostForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (!auth.currentUser || (auth.currentUser.role !== 'admin' && auth.currentUser.role !== 'escritor')) {
+        showToast("Você não tem permissão para publicar.", "error");
+        return;
+    }
+
+    const postId = document.getElementById('postIdInput').value;
+    const title = document.getElementById('postTitle').value;
+    const category = document.getElementById('postCategory').value;
+    const tags = document.getElementById('postTags').value.split(',').map(t => t.trim()).filter(t => t);
+    let imageUrl = document.getElementById('postImage').value;
+    const imageFile = document.getElementById('postImageFile').files[0];
+    const content = document.getElementById('postContent').value;
+    const isDraft = document.getElementById('postIsDraft').checked;
+
+    if (!content || content === '<p><br></p>') {
+        showToast("Por favor, escreva o conteúdo do artigo.", "error");
+        return;
+    }
+
+    const postBtn = document.getElementById('submitPostBtn');
+    postBtn.disabled = true;
+    postBtn.textContent = 'Salvando...';
+
+    try {
+        if (imageFile) {
+            postBtn.textContent = 'Enviando imagem...';
+            imageUrl = await uploadImage(imageFile);
+        }
+
+        if(postId) {
+            await updateDoc(doc(db, 'posts', postId), {
+                title,
+                category,
+                tags,
+                imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
+                content,
+                isDraft
+            });
+            showToast("Artigo atualizado com sucesso!", "success");
+        } else {
+            await addDoc(collection(db, 'posts'), {
+                title,
+                category,
+                tags,
+                imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
+                content,
+                isDraft,
+                authorName: auth.currentUser.displayName || auth.currentUser.email.split('@')[0],
+                authorId: auth.currentUser.uid,
+                authorPhoto: auth.currentUser.photoURL || "https://ui-avatars.com/api/?name=" + (auth.currentUser.displayName || auth.currentUser.email),
+                createdAt: serverTimestamp(),
+                views: 0,
+                likes: []
+            });
+            showToast(isDraft ? "Rascunho salvo com sucesso!" : "Artigo publicado com sucesso!", "success");
+        }
+
+        e.target.reset();
+        togglePostModal(false);
+        
+        // Refresh feed without full reload if possible
+        allPosts = await fetchPosts();
+        renderMagazine(allPosts);
+        
+    } catch (error) {
+        console.error("Error saving document: ", error);
+        showToast("Erro ao salvar o artigo.", "error");
+    } finally {
+        postBtn.disabled = false;
+        postBtn.textContent = 'Publicar Artigo';
+    }
+});
+
 // Handle Comment Submit
 document.getElementById('commentForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -808,6 +920,8 @@ const loadReports = async () => {
     
     reports.forEach(r => {
         const d = r.createdAt ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
+        // Escape single quotes for the onclick string
+        const escapedReason = (r.reason || '').replace(/'/g, "\\'");
         list.innerHTML += `
             <div class="report-card">
                 <div class="report-info">
@@ -816,8 +930,9 @@ const loadReports = async () => {
                     <p><strong>Por:</strong> ${r.reporterName} em ${d}</p>
                     <p style="font-size:0.7rem; margin-top:0.3rem;">ID Alvo: ${r.targetId}</p>
                 </div>
-                <div class="report-actions">
-                    <button class="btn btn-sm btn-outline" onclick="window.ignoreReport('${r.id}', '${r.reporterId}', '${r.reason}')">Ignorar</button>
+                <div class="report-actions" style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-sm btn-accent" onclick="window.respondToReport('${r.id}', '${r.reporterId}', '${escapedReason}')">Responder</button>
+                    <button class="btn btn-sm btn-outline" onclick="window.ignoreReport('${r.id}', '${r.reporterId}', '${escapedReason}')">Ignorar</button>
                 </div>
             </div>
         `;
@@ -832,6 +947,23 @@ window.ignoreReport = async (reportId, reporterId = null, reason = "") => {
             showToast("Denúncia ignorada.");
             loadReports();
         }
+    }
+};
+
+window.respondToReport = async (reportId, reporterId, originalReason) => {
+    const message = prompt(`Responda para o denunciante (Denúncia: ${originalReason}):`);
+    if(!message) return;
+    
+    try {
+        await createNotification(reporterId, `A moderação respondeu à sua denúncia: "${message}"`, 'success');
+        // Optional: archive the report after responding
+        if(confirm("Deseja arquivar esta denúncia agora que respondeu?")) {
+            await deleteDoc(doc(db, 'reports', reportId));
+            loadReports();
+        }
+        showToast("Resposta enviada!");
+    } catch (e) {
+        showToast("Erro ao enviar resposta.", "error");
     }
 };
 
