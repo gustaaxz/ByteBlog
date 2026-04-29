@@ -784,6 +784,35 @@ ul {
 .modal-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
 .hidden { display: none !important; }
 
+/* === Quill Editor Customization (Dark Mode) === */
+.ql-toolbar.ql-snow {
+    background: var(--bg-secondary);
+    border-color: var(--glass-border) !important;
+    border-radius: 8px 8px 0 0;
+}
+.ql-container.ql-snow {
+    border-color: var(--glass-border) !important;
+    border-radius: 0 0 8px 8px;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+}
+.ql-snow .ql-stroke { stroke: var(--text-secondary); }
+.ql-snow .ql-fill { fill: var(--text-secondary); }
+.ql-snow .ql-picker { color: var(--text-secondary); }
+
+/* Draft Badge */
+.draft-badge {
+    background: #f59e0b; /* Amber */
+    color: #fff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+    display: inline-block;
+}
+
 /* Admin Modal Tabs */
 .admin-panel { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
 .admin-sidebar { display: flex; gap: 1rem; border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; }

@@ -51,6 +51,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     const category = document.getElementById('postCategory').value;
     const imageUrl = document.getElementById('postImage').value;
     const content = document.getElementById('postContent').value;
+    const isDraft = document.getElementById('postIsDraft').checked;
 
     const postBtn = document.getElementById('submitPostBtn');
     postBtn.disabled = true;
@@ -63,7 +64,8 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
                 title,
                 category,
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
-                content
+                content,
+                isDraft
             });
             showToast("Artigo atualizado com sucesso!", "success");
         } else {
@@ -73,6 +75,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
                 category,
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
                 content,
+                isDraft,
                 authorName: auth.currentUser.displayName || auth.currentUser.email.split('@')[0],
                 authorId: auth.currentUser.uid,
                 authorPhoto: auth.currentUser.photoURL || "https://ui-avatars.com/api/?name=" + (auth.currentUser.displayName || auth.currentUser.email),
@@ -80,7 +83,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
                 views: 0,
                 likes: []
             });
-            showToast("Artigo publicado com sucesso!", "success");
+            showToast(isDraft ? "Rascunho salvo com sucesso!" : "Artigo publicado com sucesso!", "success");
         }
 
         e.target.reset();

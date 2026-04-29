@@ -19,11 +19,37 @@ const createPostContainer = document.getElementById('createPostContainer');
 const postsGrid = document.getElementById('postsGrid');
 const heroSection = document.getElementById('heroSection');
 const searchInput = document.getElementById('searchInput');
+const loadMoreBtn = document.getElementById('loadMoreBtn');
 
 let allPosts = []; 
+let currentlyDisplayedCount = 5; // Pagination step
+let currentCategoryFilter = 'all';
 
-// --- Initialization ---
+// Initialize Quill
+let quill;
 document.addEventListener('DOMContentLoaded', async () => {
+    // Basic Quill Setup
+    if(document.getElementById('quillEditor')) {
+        quill = new Quill('#quillEditor', {
+            theme: 'snow',
+            placeholder: 'Escreva seu artigo com formatação rica...',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link', 'image', 'video'],
+                    ['clean']
+                ]
+            }
+        });
+        
+        // Sync Quill to Hidden Input on change
+        quill.on('text-change', () => {
+            document.getElementById('postContent').value = quill.root.innerHTML;
+        });
+    }
+
     allPosts = await fetchPosts();
     renderMagazine(allPosts);
 });
@@ -123,18 +149,28 @@ searchInput?.addEventListener('input', (e) => {
     renderMagazine(filtered, false); // false means don't touch hero if searching specific things, or just re-render feed
 });
 
+// Load More
+loadMoreBtn?.addEventListener('click', () => {
+    currentlyDisplayedCount += 5;
+    const filtered = currentCategoryFilter === 'all' 
+        ? allPosts 
+        : allPosts.filter(post => post.category === currentCategoryFilter);
+    renderMagazine(filtered, true); // Update hero if needed, but usually we just want to load more in the grid
+});
+
 // Categories
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
         navLinks.forEach(l => l.classList.remove('active'));
         link.classList.add('active');
-        const category = link.dataset.category;
+        currentCategoryFilter = link.dataset.category;
+        currentlyDisplayedCount = 5; // reset pagination
         
-        if (category === 'all') {
+        if (currentCategoryFilter === 'all') {
             renderMagazine(allPosts);
         } else {
-            const filtered = allPosts.filter(post => post.category === category);
+            const filtered = allPosts.filter(post => post.category === currentCategoryFilter);
             renderMagazine(filtered);
         }
     });
@@ -190,13 +226,35 @@ export const updateNavbarForUser = (user) => {
 export const renderMagazine = (posts, updateHero = true) => {
     postsGrid.innerHTML = '';
     
-    if (posts.length === 0) {
+    // Filter out drafts if the user is not admin and not the author
+    const currentUser = auth.currentUser;
+    const isAdmin = currentUser?.role === 'admin';
+    const visiblePosts = posts.filter(p => {
+        if(!p.isDraft) return true;
+        if(isAdmin) return true;
+        if(currentUser && p.authorId === currentUser.uid) return true;
+        return false;
+    });
+    
+    if (visiblePosts.length === 0) {
         if(updateHero) heroSection.innerHTML = `<div style="padding: 4rem; text-align: center; color: var(--text-secondary);">Nenhum artigo encontrado.</div>`;
         postsGrid.innerHTML = `<p style="color: var(--text-secondary);">Nenhuma notícia para exibir.</p>`;
+        if(loadMoreBtn) loadMoreBtn.style.display = 'none';
         return;
     }
 
-    const sortedPosts = [...posts].sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+    const sortedPosts = [...visiblePosts].sort((a,b) => b.createdAt?.seconds - a.createdAt?.seconds);
+
+    // Pagination logic
+    const feedPostsToRender = sortedPosts.slice(0, currentlyDisplayedCount);
+    
+    if(loadMoreBtn) {
+        if(sortedPosts.length > currentlyDisplayedCount) {
+            loadMoreBtn.style.display = 'inline-flex';
+        } else {
+            loadMoreBtn.style.display = 'none';
+        }
+    }
 
     // Hero Post (The newest one)
     if(updateHero && sortedPosts.length > 0) {
@@ -219,14 +277,13 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts (Everything else, or everything if search)
-    const feedPosts = (updateHero && sortedPosts.length > 0) ? sortedPosts.slice(1) : sortedPosts;
+    // Feed Posts
+    const feedPosts = (updateHero && sortedPosts.length > 0) ? feedPostsToRender.slice(1) : feedPostsToRender;
 
     feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
         
         // Admin Actions
-        const isAdmin = auth.currentUser?.role === 'admin';
         const isAuthor = auth.currentUser?.uid === post.authorId;
         const canEdit = isAdmin || isAuthor; // Admin or the author can edit
         
@@ -236,9 +293,18 @@ export const renderMagazine = (posts, updateHero = true) => {
                 ${isAdmin ? `<button class="btn-admin-delete" data-id="${post.id}" title="Excluir"><i class="ph-fill ph-trash"></i></button>` : ''}
             </div>
         ` : '';
+        
+        const draftBadge = post.isDraft ? `<span class="draft-badge">Rascunho</span>` : '';
 
         const postEl = document.createElement('article');
         postEl.className = 'post-card';
+        
+        // Extract raw text for excerpt (remove HTML tags from Quill)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = post.content;
+        const rawText = tempDiv.textContent || tempDiv.innerText || '';
+        const excerpt = rawText.substring(0, 150) + (rawText.length > 150 ? '...' : '');
+
         postEl.innerHTML = `
             <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
             <div class="post-content">
@@ -246,8 +312,8 @@ export const renderMagazine = (posts, updateHero = true) => {
                     <span class="post-category">${post.category}</span>
                     <span class="post-date">${dateStr}</span>
                 </div>
-                <h3 class="post-title" style="cursor:pointer;" onclick="openReadModal('${post.id}')">${post.title}</h3>
-                <p class="post-excerpt">${post.content}</p>
+                <h3 class="post-title" style="cursor:pointer;" onclick="openReadModal('${post.id}')">${post.title} ${draftBadge}</h3>
+                <p class="post-excerpt">${excerpt}</p>
                 
                 <div class="post-author">
                     <img src="${post.authorPhoto}" alt="${post.authorName}" onerror="this.src='https://ui-avatars.com/api/?name=${post.authorName}'">
@@ -299,6 +365,9 @@ export const renderMagazine = (posts, updateHero = true) => {
                 document.getElementById('postCategory').value = post.category;
                 document.getElementById('postImage').value = post.imageUrl;
                 document.getElementById('postContent').value = post.content;
+                document.getElementById('postIsDraft').checked = post.isDraft || false;
+                
+                if(quill) quill.root.innerHTML = post.content;
                 
                 document.getElementById('postModalTitle').textContent = 'Editar Artigo';
                 document.getElementById('submitPostBtn').textContent = 'Salvar Alterações';
@@ -328,7 +397,7 @@ window.openReadModal = async (postId) => {
     document.getElementById('readDate').textContent = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Agora';
     document.getElementById('readViews').textContent = post.views;
     document.getElementById('readImage').src = post.imageUrl;
-    document.getElementById('readContent').textContent = post.content;
+    document.getElementById('readContent').innerHTML = post.content; // Rich text
     
     // Likes logic
     const likes = post.likes || [];
