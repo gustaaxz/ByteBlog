@@ -25,7 +25,7 @@
     --font-heading: 'Outfit', sans-serif;
 }
 
-body.light-theme {
+[data-theme="light"], body.light-theme {
     --bg-primary: #f8fafc;
     --bg-secondary: #ffffff;
     --bg-tertiary: #f1f5f9;
@@ -35,6 +35,10 @@ body.light-theme {
     --glass-border: rgba(0, 0, 0, 0.1);
     --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 * {
