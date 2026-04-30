@@ -1,8 +1,38 @@
-import { fetchPosts, deletePost, changeUserRole, incrementViewCount, toggleLike, addComment, fetchComments, deleteComment, editComment, reportContent, fetchReports, toggleBookmark, fetchUserPosts, ratePost, ignoreReport, fetchNotifications, markNotificationRead, createNotification } from "./db.js";
+import { 
+    fetchPosts, 
+    deletePost, 
+    changeUserRole, 
+    incrementViewCount, 
+    toggleLike, 
+    addComment, 
+    fetchComments, 
+    deleteComment, 
+    editComment, 
+    reportContent, 
+    fetchReports, 
+    toggleBookmark, 
+    fetchUserPosts, 
+    ratePost, 
+    ignoreReport, 
+    fetchNotifications, 
+    markNotificationRead, 
+    createNotification, 
+    subscribeNewsletter, 
+    toggleFollowAuthor, 
+    addUserXP 
+} from "./db.js";
 import { logoutUser } from "./auth.js";
 import { auth, db } from "./firebase-config.js";
-import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-import { uploadImage } from "./utils.js";
+import { 
+    doc, 
+    getDoc, 
+    updateDoc, 
+    addDoc, 
+    collection, 
+    serverTimestamp, 
+    deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+import { uploadImage, showToast } from "./utils.js";
 
 // === THEME MANAGER ===
 const applyTheme = () => {
@@ -20,6 +50,14 @@ const applyTheme = () => {
     }
 };
 
+const smoothTransition = (callback) => {
+    if (document.startViewTransition) {
+        document.startViewTransition(callback);
+    } else {
+        callback();
+    }
+};
+
 // Handle clicks via delegation for robustness
 document.addEventListener('click', (e) => {
     const toggle = e.target.closest('#themeToggle');
@@ -32,11 +70,42 @@ document.addEventListener('click', (e) => {
     }
 });
 
+const updateMetaTags = (title, description, image) => {
+    document.title = `${title} | Byte Blog`;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if(metaDesc) metaDesc.setAttribute('content', description);
+    
+    // OG Tags
+    let ogTitle = document.querySelector('meta[property="og:title"]');
+    if(!ogTitle) {
+        ogTitle = document.createElement('meta');
+        ogTitle.setAttribute('property', 'og:title');
+        document.head.appendChild(ogTitle);
+    }
+    ogTitle.setAttribute('content', title);
+
+    let ogImg = document.querySelector('meta[property="og:image"]');
+    if(!ogImg) {
+        ogImg = document.createElement('meta');
+        ogImg.setAttribute('property', 'og:image');
+        document.head.appendChild(ogImg);
+    }
+    ogImg.setAttribute('content', image);
+};
+
 // Run theme logic as soon as possible
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyTheme);
-} else {
+const initAutoTheme = () => {
+    if (!localStorage.getItem('theme')) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        localStorage.setItem('theme', prefersDark ? 'dark' : 'light');
+    }
     applyTheme();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAutoTheme);
+} else {
+    initAutoTheme();
 }
 
 // DOM Elements
@@ -99,25 +168,142 @@ const initQuill = () => {
 document.addEventListener('DOMContentLoaded', async () => {
     initQuill();
     
-    // Sync Quill to Hidden Input on change
-    if(window.quillInstance) {
-        window.quillInstance.on('text-change', () => {
-            const content = window.quillInstance.root.innerHTML;
-            document.getElementById('postContent').value = content;
+    // --- Interactive UI Logic (Phase 1) ---
+    
+    // Custom Cursor
+    const cursor = document.getElementById('cursor');
+    const cursorOutline = document.getElementById('cursorOutline');
+    
+    if(cursor && cursorOutline) {
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            
+            cursorOutline.animate({
+                left: e.clientX + 'px',
+                top: e.clientY + 'px'
+            }, { duration: 500, fill: 'forwards' });
+        });
+
+        // Hover effects for cursor
+        document.querySelectorAll('a, button, .post-card, .user-profile').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.transform = 'scale(2.5)';
+                cursorOutline.style.transform = 'scale(0.5)';
+                cursor.style.background = 'rgba(14, 165, 233, 0.4)';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.transform = 'scale(1)';
+                cursorOutline.style.transform = 'scale(1)';
+                cursor.style.background = 'var(--accent-primary)';
+            });
+        });
+    }
+
+    // Scroll to Top
+    const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    if(scrollToTopBtn) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 400) {
+                scrollToTopBtn.classList.add('visible');
+            } else {
+                scrollToTopBtn.classList.remove('visible');
+            }
+        });
+        
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 
     allPosts = await fetchPosts();
     renderMagazine(allPosts);
+
+    // Live Preview Synchronization
+    const updateLivePreview = () => {
+        const title = document.getElementById('postTitle')?.value;
+        const category = document.getElementById('postCategory')?.value;
+        const tags = document.getElementById('postTags')?.value.split(',').map(t => t.trim()).filter(t => t);
+        const imageUrl = document.getElementById('postImage')?.value;
+        const content = window.quillInstance ? window.quillInstance.root.innerHTML : '';
+
+        const previewTitle = document.getElementById('previewTitle');
+        const previewCategory = document.getElementById('previewCategory');
+        const previewImg = document.getElementById('previewImg');
+        const previewBody = document.getElementById('previewBody');
+        const previewTags = document.getElementById('previewTags');
+
+        if(previewTitle) previewTitle.textContent = title || "Título do seu artigo aparecerá aqui";
+        if(previewCategory) previewCategory.textContent = category || "Categoria";
+        if(previewImg && imageUrl) previewImg.src = imageUrl;
+        
+        if(previewBody) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            const rawText = tempDiv.textContent || tempDiv.innerText || "";
+            previewBody.textContent = rawText.length > 2 ? rawText.substring(0, 150) + (rawText.length > 150 ? '...' : '') : "O conteúdo do seu artigo começará a aparecer aqui conforme você digita...";
+        }
+
+        if(previewTags) {
+            previewTags.innerHTML = (tags || []).map(t => `<span class="preview-tag">#${t}</span>`).join(' ');
+        }
+    };
+
+    // Attach listeners for live preview
+    ['postTitle', 'postCategory', 'postTags', 'postImage'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateLivePreview);
+    });
+
+    // Sync Quill to Hidden Input and Preview on change
+    if(window.quillInstance) {
+        window.quillInstance.on('text-change', () => {
+            const content = window.quillInstance.root.innerHTML;
+            const input = document.getElementById('postContent');
+            if(input) input.value = content;
+            updateLivePreview();
+            
+            // Autosave to LocalStorage
+            localStorage.setItem('postDraft', JSON.stringify({
+                title: document.getElementById('postTitle').value,
+                category: document.getElementById('postCategory').value,
+                content: content,
+                tags: document.getElementById('postTags').value
+            }));
+        });
+    }
+
+    // Recover Draft
+    const savedDraft = localStorage.getItem('postDraft');
+    if(savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        // Only recover if not already editing a post
+        if(!document.getElementById('postIdInput').value) {
+            document.getElementById('postTitle').value = draft.title || '';
+            document.getElementById('postCategory').value = draft.category || '';
+            document.getElementById('postTags').value = draft.tags || '';
+            if(window.quillInstance) window.quillInstance.root.innerHTML = draft.content || '';
+        }
+    }
+
+    // Newsletter Listener
+    document.getElementById('newsletterForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = e.target.querySelector('input').value;
+        const success = await subscribeNewsletter(email);
+        if(success) e.target.reset();
+    });
+
+    // Export for use when opening modal
+    window.updateLivePreview = updateLivePreview;
 });
 
 // --- Modal Handling ---
-export const toggleAuthModal = (show) => authModal.classList.toggle('active', show);
-export const togglePostModal = (show) => postModal.classList.toggle('active', show);
-export const toggleAdminModal = (show) => adminModal.classList.toggle('active', show);
-export const toggleReadModal = (show) => readPostModal.classList.toggle('active', show);
+export const toggleAuthModal = (show) => smoothTransition(() => authModal.classList.toggle('active', show));
+export const togglePostModal = (show) => smoothTransition(() => postModal.classList.toggle('active', show));
+export const toggleAdminModal = (show) => smoothTransition(() => adminModal.classList.toggle('active', show));
+export const toggleReadModal = (show) => smoothTransition(() => readPostModal.classList.toggle('active', show));
 
-export const toggleProfileModal = (show) => {
+export const toggleProfileModal = (show) => smoothTransition(() => {
     profileModal.classList.toggle('active', show);
     if (show && auth.currentUser) {
         document.getElementById('profileName').value = auth.currentUser.displayName || '';
@@ -128,7 +314,7 @@ export const toggleProfileModal = (show) => {
         const badge = document.getElementById('userRoleBadge');
         if(badge) badge.textContent = `Cargo: ${auth.currentUser.role ? auth.currentUser.role.toUpperCase() : 'REDATOR'}`;
     }
-};
+});
 
 export const togglePublicProfileModal = (show) => {
     const modal = document.getElementById('publicProfileModal');
@@ -139,6 +325,43 @@ export const toggleNotifModal = (show) => {
     const modal = document.getElementById('notifModal');
     if(modal) modal.classList.toggle('active', show);
     if(show) loadNotifications();
+};
+
+export const updateNavbarForUser = (user) => {
+    const authSection = document.getElementById('authSection');
+    const createPostContainer = document.getElementById('createPostContainer');
+    
+    if (user) {
+        const isAdmin = user.role === 'admin';
+        const isWriter = user.role === 'escritor' || isAdmin;
+        
+        if (createPostContainer) {
+            createPostContainer.classList.toggle('hidden', !isWriter);
+        }
+
+        authSection.innerHTML = `
+            <div class="user-nav" style="display:flex; align-items:center; gap:1rem;">
+                ${isAdmin ? `<button class="btn btn-outline" id="adminBtn"><i class="ph ph-shield-check"></i> Admin</button>` : ''}
+                <div class="user-profile" onclick="toggleProfileModal(true)" style="cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
+                    <img src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}`}" style="width:32px; height:32px; border-radius:50%; border:2px solid var(--accent-primary);">
+                    <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${user.displayName || user.email.split('@')[0]}</span>
+                </div>
+                <button class="btn-icon" id="logoutBtn" title="Sair"><i class="ph ph-sign-out"></i></button>
+            </div>
+        `;
+        
+        document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
+        document.getElementById('adminBtn')?.addEventListener('click', () => {
+            loadStats();
+            toggleAdminModal(true);
+        });
+
+        checkNotifications();
+    } else {
+        if (createPostContainer) createPostContainer.classList.add('hidden');
+        authSection.innerHTML = `<button class="btn btn-primary" id="loginBtn">Entrar / Cadastrar</button>`;
+        document.getElementById('loginBtn')?.addEventListener('click', () => toggleAuthModal(true));
+    }
 };
 
 document.getElementById('profileImage')?.addEventListener('input', (e) => {
@@ -157,6 +380,7 @@ openCreatePostModalBtn?.addEventListener('click', () => {
     document.getElementById('postIdInput').value = '';
     initQuill();
     if(window.quillInstance) window.quillInstance.setContents([]);
+    if(window.updateLivePreview) window.updateLivePreview(); // Reset preview
     togglePostModal(true);
 });
 
@@ -232,15 +456,27 @@ document.getElementById('changeRoleForm')?.addEventListener('submit', async (e) 
     await changeUserRole(email, role);
 });
 
-// Search
+// Search with Highlighting
 searchInput?.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     const filtered = allPosts.filter(p => 
         p.title.toLowerCase().includes(term) || 
         p.content.toLowerCase().includes(term)
     );
-    renderMagazine(filtered, false); // false means don't touch hero if searching specific things, or just re-render feed
+    renderMagazine(filtered, false);
+    
+    if(term.length > 2) {
+        highlightSearchTerms(term);
+    }
 });
+
+const highlightSearchTerms = (term) => {
+    const cards = document.querySelectorAll('.post-title, .post-excerpt');
+    cards.forEach(card => {
+        const regex = new RegExp(`(${term})`, 'gi');
+        card.innerHTML = card.innerText.replace(regex, '<mark class="highlight">$1</mark>');
+    });
+};
 
 // Load More
 loadMoreBtn?.addEventListener('click', () => {
@@ -280,72 +516,27 @@ document.getElementById('searchFilter')?.addEventListener('change', (e) => {
     renderMagazine(posts, false);
 });
 
-// UI Update based on Auth
-export const updateNavbarForUser = (user) => {
-    if (user) {
-        const canPost = user.role === 'admin' || user.role === 'escritor';
-        if(canPost) {
-            createPostContainer.classList.remove('hidden');
-        } else {
-            createPostContainer.classList.add('hidden');
-        }
-
-        const isAdmin = user.role === 'admin';
-        const adminBtnHtml = isAdmin ? `<button class="btn btn-outline" id="openAdminBtn" title="Dashboard Admin"><i class="ph ph-shield-check"></i></button>` : '';
-
-        const userName = user.displayName || user.email.split('@')[0];
-        const userPhoto = user.photoURL || `https://ui-avatars.com/api/?name=${userName}&background=0ea5e9&color=fff`;
-
-        authSection.innerHTML = `
-            ${adminBtnHtml}
-            <div class="user-profile" id="openProfileBtn" title="Gerenciar Perfil">
-                <img src="${userPhoto}" alt="${userName}">
-                <span class="user-name">${userName}</span>
-            </div>
-        `;
-
-        // The logout button is now inside the profile modal (handled globally in DOM or via dynamic listener)
-        document.getElementById('logoutBtn')?.addEventListener('click', () => {
-            if(confirm("Deseja realmente sair?")) {
-                logoutUser();
-            }
-        });
-        document.getElementById('openProfileBtn').addEventListener('click', () => {
-            loadAuthorDashboard();
-            toggleProfileModal(true);
-        });
-        
-        if(isAdmin) {
-            document.getElementById('openAdminBtn').addEventListener('click', () => {
-                document.getElementById('statTotalPosts').textContent = allPosts.length;
-                toggleAdminModal(true);
-            });
-            // Listener de Denúncias no Painel Admin
-            document.querySelector('[data-target="adminReports"]')?.addEventListener('click', () => renderAdminReports());
-        }
-
-        renderMagazine(allPosts); // Re-render to show admin actions
-        checkNotifications(); // Check notifications on login
-        
-        // Listeners para inputs de arquivo (UI feedback)
-        document.getElementById('postImageFile')?.addEventListener('change', (e) => {
-            const fileName = e.target.files[0]?.name || '';
-            document.getElementById('postImageFileName').textContent = fileName ? `Selecionado: ${fileName}` : '';
-        });
-        
-        document.getElementById('profileImageFile')?.addEventListener('change', (e) => {
-            const fileName = e.target.files[0]?.name || '';
-            document.getElementById('profileImageFileName').textContent = fileName ? `Selecionado: ${fileName}` : '';
-        });
-
-    } else {
-        createPostContainer.classList.add('hidden');
-        authSection.innerHTML = `<button class="btn btn-primary" id="loginBtn">Entrar / Cadastrar</button>`;
-        document.getElementById('loginBtn')?.addEventListener('click', () => toggleAuthModal(true));
-        
-        if (allPosts.length > 0) renderMagazine(allPosts);
+// Listeners para inputs de arquivo (UI feedback)
+document.getElementById('postImageFile')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const fileName = file?.name || '';
+    document.getElementById('postImageFileName').textContent = fileName ? `Selecionado: ${fileName}` : '';
+    
+    if(file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const previewImg = document.getElementById('previewImg');
+            if(previewImg) previewImg.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
     }
-};
+});
+
+document.getElementById('profileImageFile')?.addEventListener('change', (e) => {
+    const fileName = e.target.files[0]?.name || '';
+    const nameEl = document.getElementById('profileImageFileName');
+    if(nameEl) nameEl.textContent = fileName ? `Selecionado: ${fileName}` : '';
+});
 
 // Render Magazine
 export const renderMagazine = (posts, updateHero = true) => {
@@ -426,9 +617,11 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts - SEM NENHUM SLICE OU FILTRO QUE REMOVA O PRIMEIRO POST
-    const feedPosts = sortedPosts.slice(0, currentlyDisplayedCount);
+    // Feed Posts - Começa do índice 1 para não repetir o post de destaque (Hero)
+    const feedPosts = sortedPosts.slice(1, currentlyDisplayedCount);
 
+    if(updateHero) postsGrid.innerHTML = ''; // Limpa skeletons apenas se for um carregamento completo
+    
     feedPosts.forEach(post => {
         const dateStr = post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : 'Postado agora';
         
@@ -463,7 +656,7 @@ export const renderMagazine = (posts, updateHero = true) => {
         const tagsHtml = tags.map(t => `<span class="post-tag">#${t}</span>`).join(' ');
 
         postEl.innerHTML = `
-            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
+            <img src="${post.imageUrl}" alt="${post.title}" class="post-image" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800'" style="cursor:pointer;" onclick="openReadModal('${post.id}')">
             <div class="post-content">
                 <div class="post-meta">
                     <span class="post-category">${post.category}</span>
@@ -527,6 +720,7 @@ const attachPostListeners = () => {
                 
                 initQuill();
                 if(window.quillInstance) window.quillInstance.root.innerHTML = post.content;
+                if(window.updateLivePreview) window.updateLivePreview(); // Load preview with data
                 postModal.classList.add('active');
             }
         };
@@ -556,6 +750,9 @@ window.openReadModal = async (postId) => {
     document.getElementById('readViews').textContent = post.views;
     document.getElementById('readImage').src = post.imageUrl;
     document.getElementById('readContent').innerHTML = post.content; // Rich text
+
+    // Update Meta Tags for SEO
+    updateMetaTags(post.title, post.content.substring(0, 160), post.imageUrl);
 
     // Task 12: Related Posts
     const relatedPostsGrid = document.getElementById('relatedPostsGrid');
@@ -630,8 +827,20 @@ window.openReadModal = async (postId) => {
             <a href="https://wa.me/?text=${postTitle}%20${postUrl}" target="_blank" title="WhatsApp" style="color:#25d366; font-size:1.2rem;"><i class="ph-fill ph-whatsapp-logo"></i></a>
             <a href="https://twitter.com/intent/tweet?text=${postTitle}&url=${postUrl}" target="_blank" title="Twitter" style="color:#1da1f2; font-size:1.2rem;"><i class="ph-fill ph-twitter-logo"></i></a>
             <a href="https://www.linkedin.com/sharing/share-offsite/?url=${postUrl}" target="_blank" title="LinkedIn" style="color:#0a66c2; font-size:1.2rem;"><i class="ph-fill ph-linkedin-logo"></i></a>
+            <button class="btn-copy-link" onclick="copyToClipboard('${window.location.href}')" title="Copiar Link" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;"><i class="ph ph-link"></i></button>
         </div>
     `;
+
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("Link copiado para a área de transferência!", "success");
+            const btn = document.querySelector('.btn-copy-link i');
+            if(btn) {
+                btn.className = 'ph ph-check';
+                setTimeout(() => btn.className = 'ph ph-link', 2000);
+            }
+        });
+    };
 
     if(isLiked) {
         likeIcon.classList.remove('ph');
@@ -654,6 +863,35 @@ window.openReadModal = async (postId) => {
     // Fetch Comments
     loadComments(postId);
     
+    // TTS (Ouça o Artigo)
+    const readContent = document.getElementById('readContent');
+    const ttsBtn = document.createElement('button');
+    ttsBtn.className = 'btn btn-outline';
+    ttsBtn.innerHTML = '<i class="ph ph-speaker-high"></i> Ouça o Artigo';
+    ttsBtn.style.marginRight = 'auto';
+    ttsBtn.onclick = () => {
+        const utterance = new SpeechSynthesisUtterance(readContent.innerText);
+        utterance.lang = 'pt-BR';
+        if(window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            ttsBtn.innerHTML = '<i class="ph ph-speaker-high"></i> Ouça o Artigo';
+        } else {
+            window.speechSynthesis.speak(utterance);
+            ttsBtn.innerHTML = '<i class="ph ph-stop-circle"></i> Parar Leitura';
+            utterance.onend = () => ttsBtn.innerHTML = '<i class="ph ph-speaker-high"></i> Ouça o Artigo';
+        }
+    };
+    
+    const readActions = document.querySelector('.interaction-bar');
+    if(readActions) {
+        const oldTts = readActions.querySelector('.tts-btn-container');
+        if(oldTts) oldTts.remove();
+        const container = document.createElement('div');
+        container.className = 'tts-btn-container';
+        container.appendChild(ttsBtn);
+        readActions.insertBefore(container, readActions.firstChild);
+    }
+
     toggleReadModal(true);
 };
 
@@ -718,6 +956,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
     // Sync Quill before getting value
     const content = window.quillInstance ? window.quillInstance.root.innerHTML : document.getElementById('postContent').value;
     const isDraft = document.getElementById('postIsDraft').checked;
+    const scheduledAt = document.getElementById('postSchedule').value;
 
     if (!content || content === '<p><br></p>' || content.trim() === '') {
         showToast("Por favor, escreva o conteúdo do artigo.", "error");
@@ -742,7 +981,8 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
                 tags,
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
                 content,
-                isDraft
+                isDraft,
+                scheduledAt: scheduledAt || null
             });
             showToast("Artigo atualizado com sucesso!", "success");
         } else {
@@ -753,6 +993,7 @@ document.getElementById('createPostForm')?.addEventListener('submit', async (e) 
                 imageUrl: imageUrl || "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800",
                 content,
                 isDraft,
+                scheduledAt: scheduledAt || null,
                 authorName: auth.currentUser.displayName || auth.currentUser.email.split('@')[0],
                 authorId: auth.currentUser.uid,
                 authorPhoto: auth.currentUser.photoURL || "https://ui-avatars.com/api/?name=" + (auth.currentUser.displayName || auth.currentUser.email),
@@ -1171,12 +1412,3 @@ document.querySelectorAll('.profile-tabs .tab').forEach(tab => {
         }
     };
 });
-
-// Toast
-export const showToast = (message, type = 'success') => {
-    const toast = document.getElementById('toast');
-    const icon = type === 'success' ? '<i class="ph-fill ph-check-circle" style="color: #10b981;"></i>' : '<i class="ph-fill ph-warning-circle" style="color: #ef4444;"></i>';
-    toast.innerHTML = `${icon} <span>${message}</span>`;
-    toast.className = `toast show ${type}`;
-    setTimeout(() => toast.classList.remove('show'), 3000);
-};

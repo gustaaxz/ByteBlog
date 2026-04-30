@@ -12,9 +12,11 @@ import {
     where,
     increment,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-import { renderMagazine, showToast, togglePostModal } from "./app.js";
+import { renderMagazine, togglePostModal } from "./app.js";
+import { showToast } from "./utils.js";
 import { uploadImage } from "./utils.js";
 
 // Collection Reference
@@ -37,8 +39,6 @@ export const fetchPosts = async () => {
         return [];
     }
 };
-
-// Create or Edit Post - Funções movidas para app.js para melhor gerenciamento de UI
 
 // Admin/Writer Delete Post
 export const deletePost = async (postId) => {
@@ -103,16 +103,21 @@ export const toggleLike = async (postId, userId, isLiked) => {
 };
 
 // Add Comment
-export const addComment = async (postId, text) => {
+export const addComment = async (postId, text, parentId = null) => {
     try {
         const commentsCol = collection(db, `posts/${postId}/comments`);
         await addDoc(commentsCol, {
             text,
+            parentId,
             authorId: auth.currentUser.uid,
             authorName: auth.currentUser.displayName || auth.currentUser.email.split('@')[0],
             authorPhoto: auth.currentUser.photoURL || "https://ui-avatars.com/api/?name=" + (auth.currentUser.displayName || auth.currentUser.email),
             createdAt: serverTimestamp()
         });
+        
+        // Award XP for commenting
+        await addUserXP(auth.currentUser.uid, 5);
+        
         return true;
     } catch (error) {
         console.error("Error adding comment:", error);
@@ -301,5 +306,69 @@ export const markNotificationRead = async (notificationId) => {
     } catch (error) {
         console.error("Error marking notification read:", error);
         return false;
+    }
+};
+
+// --- Engagement Features (Phase 2) ---
+
+export const subscribeNewsletter = async (email) => {
+    try {
+        const newsletterCol = collection(db, 'newsletter');
+        const q = query(newsletterCol, where("email", "==", email));
+        const snap = await getDocs(q);
+        if(!snap.empty) {
+            showToast("Este e-mail já está inscrito!", "info");
+            return false;
+        }
+        await addDoc(newsletterCol, {
+            email,
+            subscribedAt: serverTimestamp()
+        });
+        showToast("Inscrição realizada com sucesso!", "success");
+        return true;
+    } catch (error) {
+        console.error("Error subscribing to newsletter:", error);
+        return false;
+    }
+};
+
+export const toggleFollowAuthor = async (authorId) => {
+    if(!auth.currentUser) {
+        showToast("Faça login para seguir autores.", "error");
+        return false;
+    }
+    try {
+        const userId = auth.currentUser.uid;
+        if(userId === authorId) {
+            showToast("Você não pode seguir a si mesmo.", "info");
+            return false;
+        }
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+        const following = userDoc.exists() ? (userDoc.data().following || []) : [];
+        const isFollowing = following.includes(authorId);
+        await updateDoc(userRef, {
+            following: isFollowing ? arrayRemove(authorId) : arrayUnion(authorId)
+        });
+        const authorRef = doc(db, 'users', authorId);
+        await updateDoc(authorRef, {
+            followers: isFollowing ? arrayRemove(userId) : arrayUnion(userId)
+        });
+        showToast(isFollowing ? "Deixou de seguir o autor." : "Seguindo o autor!", "success");
+        return true;
+    } catch (error) {
+        console.error("Error toggling follow:", error);
+        return false;
+    }
+};
+
+export const addUserXP = async (userId, amount) => {
+    try {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, {
+            xp: increment(amount)
+        });
+    } catch (error) {
+        console.error("Error adding XP:", error);
     }
 };

@@ -86,7 +86,11 @@
         <!-- Hero Section (Artigo Principal) -->
         <section class="hero-magazine" id="heroSection">
             <!-- Will be populated by JS with the latest/hottest post -->
-            <div class="loader" id="heroLoader"></div>
+            <div id="heroLoader" class="skeleton-hero" style="width:100%; height:100%; padding:3rem; display:flex; flex-direction:column; justify-content:flex-end; gap:1rem;">
+                <div class="skeleton skeleton-text" style="width:100px;"></div>
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width:200px;"></div>
+            </div>
         </section>
 
         <!-- Container Duplo (Feed Principal + Sidebar) -->
@@ -106,7 +110,17 @@
                 
                 <div class="posts-grid" id="postsGrid">
                     <!-- Posts will be injected here via JS -->
-                    <div class="loader" id="postsLoader"></div>
+                    <div id="postsLoader" class="skeleton-grid" style="display:flex; flex-direction:column; gap:2rem; width:100%;">
+                        <div class="skeleton-card" style="display:flex; gap:2rem; min-height:220px;">
+                            <div class="skeleton skeleton-image" style="width:300px; height:auto; margin:0;"></div>
+                            <div style="flex:1; padding:1.5rem; display:flex; flex-direction:column; gap:1rem;">
+                                <div class="skeleton skeleton-text" style="width:150px;"></div>
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-text"></div>
+                                <div class="skeleton skeleton-text" style="width:60%;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="pagination-container" style="text-align: center; margin-top: 2rem;">
@@ -226,55 +240,88 @@
 
     <!-- Create/Edit Post Modal -->
     <div class="modal" id="postModal">
-        <div class="modal-content post-modal">
+        <div class="modal-content post-modal editor-large">
             <button class="close-modal"><i class="ph ph-x"></i></button>
-            <h2 id="postModalTitle">Criar Novo Artigo</h2>
-            <form id="createPostForm">
-                <input type="hidden" id="postIdInput"> <!-- Para edição -->
-                <div class="form-group">
-                    <label for="postTitle">Título do Artigo</label>
-                    <input type="text" id="postTitle" required placeholder="Ex: O futuro da Inteligência Artificial">
-                </div>
-                <div class="form-group">
-                    <label for="postCategory">Categoria</label>
-                    <select id="postCategory" required>
-                        <option value="" disabled selected>Selecione uma categoria...</option>
-                        <option value="Jogos">Jogos</option>
-                        <option value="Hardware">Hardware</option>
-                        <option value="Programação">Programação</option>
-                        <option value="Mobile">Mobile</option>
-                        <option value="Notícias">Notícias Diárias</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="postTags">Tags (separadas por vírgula)</label>
-                    <input type="text" id="postTags" placeholder="Ex: AI, Windows, Nvidia">
-                </div>
-                <div class="form-group">
-                    <label for="postImage">Imagem de Capa (URL ou Arquivo)</label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="url" id="postImage" placeholder="https://exemplo.com/imagem.jpg" style="flex: 1;">
-                        <label for="postImageFile" class="btn btn-outline" title="Fazer upload" style="cursor:pointer; padding: 0.8rem;">
-                            <i class="ph ph-upload-simple"></i>
-                        </label>
-                        <input type="file" id="postImageFile" accept="image/*" style="display:none;">
+            <h2 id="postModalTitle" style="margin-bottom: 1.5rem;">Criar Novo Artigo</h2>
+            
+            <div class="post-editor-container">
+                <!-- Lado Esquerdo: Formulário -->
+                <form id="createPostForm" class="editor-form">
+                    <input type="hidden" id="postIdInput">
+                    <div class="form-group">
+                        <label for="postTitle">Título do Artigo</label>
+                        <input type="text" id="postTitle" required placeholder="Ex: O futuro da Inteligência Artificial">
                     </div>
-                    <span id="postImageFileName" style="font-size:0.8rem; color:var(--text-secondary); margin-top: 0.3rem; display: block;"></span>
+                    <div class="form-group">
+                        <label for="postCategory">Categoria</label>
+                        <select id="postCategory" required>
+                            <option value="" disabled selected>Selecione uma categoria...</option>
+                            <option value="Jogos">Jogos</option>
+                            <option value="Hardware">Hardware</option>
+                            <option value="Programação">Programação</option>
+                            <option value="Mobile">Mobile</option>
+                            <option value="Notícias">Notícias Diárias</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="postTags">Tags (separadas por vírgula)</label>
+                        <input type="text" id="postTags" placeholder="Ex: AI, Windows, Nvidia">
+                    </div>
+                    <div class="form-group">
+                        <label for="postImage">Imagem de Capa (URL ou Arquivo)</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="url" id="postImage" placeholder="https://exemplo.com/imagem.jpg" style="flex: 1;">
+                            <label for="postImageFile" class="btn btn-outline" title="Fazer upload" style="cursor:pointer; padding: 0.8rem;">
+                                <i class="ph ph-upload-simple"></i>
+                            </label>
+                            <input type="file" id="postImageFile" accept="image/*" style="display:none;">
+                        </div>
+                        <span id="postImageFileName" style="font-size:0.8rem; color:var(--text-secondary); margin-top: 0.3rem; display: block;"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="postContent">Conteúdo</label>
+                        <div id="quillEditor" style="height: 250px; background: var(--bg-tertiary); color: var(--text-primary);"></div>
+                        <input type="hidden" id="postContent">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="postIsDraft" style="width: auto;">
+                            <label for="postIsDraft" style="margin: 0; cursor: pointer;">Salvar como Rascunho</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="postSchedule" style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">Agendar para:</label>
+                            <input type="datetime-local" id="postSchedule" style="padding: 0.3rem; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--bg-tertiary); color: white; font-size: 0.8rem;">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitPostBtn">Publicar Artigo</button>
+                    </div>
+                </form>
+
+                <!-- Lado Direito: Preview Real-time -->
+                <div class="post-preview-pane">
+                    <div class="preview-header">
+                        <i class="ph ph-eye"></i> Visualização em tempo real
+                    </div>
+                    <div class="preview-content-card">
+                        <div class="preview-image-container">
+                            <img id="previewImg" src="https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800" alt="Preview Capa">
+                            <span id="previewCategory" class="preview-badge">Categoria</span>
+                        </div>
+                        <div class="preview-text">
+                            <h3 id="previewTitle">Título do seu artigo aparecerá aqui</h3>
+                            <div class="preview-meta">
+                                <span id="previewDate">30/04/2026</span> • <span id="previewAuthor">Você</span>
+                            </div>
+                            <div id="previewBody" class="preview-body-text">
+                                O conteúdo do seu artigo começará a aparecer aqui conforme você digita...
+                            </div>
+                            <div id="previewTags" class="preview-tags-container"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="postContent">Conteúdo</label>
-                    <div id="quillEditor" style="height: 250px; background: var(--bg-tertiary); color: var(--text-primary);"></div>
-                    <input type="hidden" id="postContent">
-                </div>
-                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
-                    <input type="checkbox" id="postIsDraft" style="width: auto;">
-                    <label for="postIsDraft" style="margin: 0; cursor: pointer;">Salvar como Rascunho (apenas você e admins poderão ver)</label>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="submitPostBtn">Publicar Artigo</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -385,7 +432,19 @@
                     <!-- Stats -->
                     <div id="stats" class="admin-view" style="display: none;">
                         <h3>Estatísticas do Blog</h3>
-                        <p>Total de Artigos: <span id="statTotalPosts">0</span></p>
+                        <div class="analytics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+                            <div class="stat-card" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Total de Views</span>
+                                <strong id="statTotalViews" style="font-size: 1.5rem; color: var(--accent-primary);">0</strong>
+                            </div>
+                            <div class="stat-card" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Total de Artigos</span>
+                                <strong id="statTotalPosts" style="font-size: 1.5rem; color: var(--accent-primary);">0</strong>
+                            </div>
+                        </div>
+                        <div style="margin-top: 2rem; background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; height: 150px; display: flex; align-items: flex-end; gap: 0.5rem; justify-content: space-around;" id="analyticsChart">
+                            <!-- Bars will be injected by JS -->
+                        </div>
                     </div>
 
                     <!-- Denúncias -->
@@ -510,6 +569,15 @@
             </div>
         </div>
     </div>
+
+    <!-- Custom Cursor -->
+    <div class="custom-cursor" id="cursor"></div>
+    <div class="custom-cursor-outline" id="cursorOutline"></div>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTopBtn" title="Voltar ao topo">
+        <i class="ph-fill ph-arrow-fat-up"></i>
+    </button>
 
     <!-- Scripts -->
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
