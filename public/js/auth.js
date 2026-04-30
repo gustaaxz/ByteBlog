@@ -10,8 +10,8 @@ import {
     updateEmail
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-import { showToast, toggleAuthModal, updateNavbarForUser, toggleProfileModal } from "./app.js";
-import { uploadImage } from "./utils.js";
+import { toggleAuthModal, updateNavbarForUser, toggleProfileModal } from "./app.js";
+import { uploadImage, showToast } from "./utils.js";
 
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();

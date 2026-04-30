@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Byte Blog - O seu portal Tech</title>
+    <meta name="description" content="O seu portal de notícias sobre tecnologia, informática, jogos e o dia a dia.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Phosphor Icons) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="manifest" href="/assets/manifest-CUH3Z-6B.json">
+    <meta name="theme-color" content="#0ea5e9">
+  <script type="module" crossorigin src="/assets/index-ChwkdfTl.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-05yUKGrf.css">
+</head>
+<body>
+    <!-- Reading Progress Bar -->
+    <div id="readingProgress" class="reading-progress"></div>
+    
+    <!-- Navbar Superior (Magazine Style) -->
+    <header class="navbar">
+        <div class="nav-container">
+            <!-- Logo -->
+            <a href="#" class="logo" id="homeLogo">
+                <i class="ph-fill ph-code"></i>
+                Byte<span>Blog</span>
+            </a>
+            
+            <!-- Barra de Pesquisa -->
+            <div class="search-bar">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Pesquisar artigos...">
+                <!-- Filtro de Busca -->
+                <select id="searchFilter" style="background:none; border:none; color:var(--text-secondary); font-size:0.75rem; margin-left:0.5rem; cursor:pointer;">
+                    <option value="newest">Novos</option>
+                    <option value="oldest">Antigos</option>
+                    <option value="popular">Populares</option>
+                </select>
+            </div>
+
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.8rem; margin-left: auto;">
+                <button id="themeToggle" class="btn-icon" title="Alternar Tema" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.4rem; display:flex; align-items:center;">
+                    <i class="ph ph-moon"></i>
+                </button>
+                <button id="notifBtn" class="btn-icon" title="Notificações" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.4rem; display:flex; align-items:center; position:relative;">
+                    <i class="ph ph-bell"></i>
+                    <span id="notifBadge" style="display:none; position:absolute; top:2px; right:2px; width:8px; height:8px; background:#ef4444; border-radius:50%; border:2px solid var(--bg-secondary);"></span>
+                </button>
+            </div>
+
+            <div class="auth-section" id="authSection">
+                <!-- Logged Out View -->
+                <button class="btn btn-primary" id="loginBtn">Entrar / Cadastrar</button>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+        
+        <!-- Navbar Inferior (Categorias) -->
+        <nav class="categories-nav">
+            <div class="categories-container" id="navLinks">
+                <a href="#" class="active" data-category="all">Destaques</a>
+                <a href="#" data-category="Jogos">Jogos</a>
+                <a href="#" data-category="Hardware">Hardware</a>
+                <a href="#" data-category="Programação">Programação</a>
+                <a href="#" data-category="Mobile">Mobile</a>
+                <a href="#" data-category="Notícias">Notícias Diárias</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content Magazine Style -->
+    <main class="main-content">
+        
+        <!-- Hero Section (Artigo Principal) -->
+        <section class="hero-magazine" id="heroSection">
+            <!-- Will be populated by JS with the latest/hottest post -->
+            <div id="heroLoader" class="skeleton-hero" style="width:100%; height:100%; padding:3rem; display:flex; flex-direction:column; justify-content:flex-end; gap:1rem;">
+                <div class="skeleton skeleton-text" style="width:100px;"></div>
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width:200px;"></div>
+            </div>
+        </section>
+
+        <!-- Container Duplo (Feed Principal + Sidebar) -->
+        <div class="magazine-layout">
+            
+            <!-- Coluna Esquerda (Feed de Artigos) -->
+            <section class="feed-section">
+                <div class="feed-header">
+                    <h2>Últimas Notícias</h2>
+                    <!-- Create Post Button (Only visible for Admin/Escritor) -->
+                    <div class="actions-container hidden" id="createPostContainer">
+                        <button class="btn btn-accent" id="openCreatePostModal">
+                            <i class="ph ph-plus-circle"></i> Criar Artigo
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="posts-grid" id="postsGrid">
+                    <!-- Posts will be injected here via JS -->
+                    <div id="postsLoader" class="skeleton-grid" style="display:flex; flex-direction:column; gap:2rem; width:100%;">
+                        <div class="skeleton-card" style="display:flex; gap:2rem; min-height:220px;">
+                            <div class="skeleton skeleton-image" style="width:300px; height:auto; margin:0;"></div>
+                            <div style="flex:1; padding:1.5rem; display:flex; flex-direction:column; gap:1rem;">
+                                <div class="skeleton skeleton-text" style="width:150px;"></div>
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-text"></div>
+                                <div class="skeleton skeleton-text" style="width:60%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pagination-container" style="text-align: center; margin-top: 2rem;">
+                    <button id="loadMoreBtn" class="btn btn-outline" style="display: none;">Carregar Mais Artigos</button>
+                </div>
+            </section>
+
+            <!-- Coluna Direita (Sidebar / Mais Lidos) -->
+            <aside class="sidebar-section">
+                <!-- Removido widget Populares -->
+
+
+                <div class="widget">
+                    <h3>Assine nossa Newsletter</h3>
+                    <p class="widget-desc">Receba as novidades da tecnologia direto no seu email todos os dias.</p>
+                    <form id="newsletterForm" class="newsletter-form">
+                        <input type="email" placeholder="Seu melhor email" required>
+                        <button type="submit" class="btn btn-primary full-width">Inscrever-se</button>
+                    </form>
+                </div>
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="logo">
+                    <i class="ph-fill ph-code"></i>
+                    Byte<span>Blog</span>
+                </div>
+                <p>O seu espaço diário para tecnologia e informação.</p>
+            </div>
+            
+            <div class="footer-links">
+                <div class="link-group">
+                    <h3>Suporte</h3>
+                    <a href="pages/faq.html">FAQ</a>
+                    <a href="pages/ajuda.html">Central de Ajuda</a>
+                    <a href="pages/bug.html">Reportar Bug</a>
+                </div>
+                <div class="link-group">
+                    <h3>Contato</h3>
+                    <a href="pages/contato.html">Fale Conosco</a>
+                    <a href="pages/trabalhe.html">Trabalhe Conosco</a>
+                    <a href="pages/anuncie.html">Anuncie</a>
+                </div>
+                <div class="link-group">
+                    <h3>Legal</h3>
+                    <a href="pages/termos.html">Termos de Uso</a>
+                    <a href="pages/privacidade.html">Privacidade</a>
+                    <a href="pages/cookies.html">Cookies</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Byte Blog. Todos os direitos reservados.</p>
+            <div class="social-links">
+                <a href="#"><i class="ph ph-twitter-logo"></i></a>
+                <a href="#"><i class="ph ph-github-logo"></i></a>
+                <a href="#"><i class="ph ph-discord-logo"></i></a>
+            </div>
+        </div>
+        <div id="google_translate_element" style="display: flex; justify-content: center; padding-bottom: 1rem;"></div>
+    </footer>
+
+    <!-- Modals -->
+
+    <!-- Auth Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content auth-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <div class="auth-tabs">
+                <button class="tab active" data-tab="login">Login</button>
+                <button class="tab" data-tab="register">Cadastro</button>
+            </div>
+            
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Senha</label>
+                    <input type="password" id="loginPassword" required placeholder="Sua senha secreta">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Entrar</button>
+            </form>
+
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerName">Nome de Usuário</label>
+                    <input type="text" id="registerName" required placeholder="Como devemos te chamar?">
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" required placeholder="seu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Senha</label>
+                    <input type="password" id="registerPassword" required placeholder="Mínimo de 6 caracteres" minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Criar Conta</button>
+            </form>
+
+            <div class="auth-divider">
+                <span>ou continue com</span>
+            </div>
+
+            <button id="googleSignIn" class="btn btn-outline full-width google-btn">
+                <i class="ph-fill ph-google-logo"></i> Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Create/Edit Post Modal -->
+    <div class="modal" id="postModal">
+        <div class="modal-content post-modal editor-large">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2 id="postModalTitle" style="margin-bottom: 1.5rem;">Criar Novo Artigo</h2>
+            
+            <div class="post-editor-container">
+                <!-- Lado Esquerdo: Formulário -->
+                <form id="createPostForm" class="editor-form">
+                    <input type="hidden" id="postIdInput">
+                    <div class="form-group">
+                        <label for="postTitle">Título do Artigo</label>
+                        <input type="text" id="postTitle" required placeholder="Ex: O futuro da Inteligência Artificial">
+                    </div>
+                    <div class="form-group">
+                        <label for="postCategory">Categoria</label>
+                        <select id="postCategory" required>
+                            <option value="" disabled selected>Selecione uma categoria...</option>
+                            <option value="Jogos">Jogos</option>
+                            <option value="Hardware">Hardware</option>
+                            <option value="Programação">Programação</option>
+                            <option value="Mobile">Mobile</option>
+                            <option value="Notícias">Notícias Diárias</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="postTags">Tags (separadas por vírgula)</label>
+                        <input type="text" id="postTags" placeholder="Ex: AI, Windows, Nvidia">
+                    </div>
+                    <div class="form-group">
+                        <label for="postImage">Imagem de Capa (URL ou Arquivo)</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="url" id="postImage" placeholder="https://exemplo.com/imagem.jpg" style="flex: 1;">
+                            <label for="postImageFile" class="btn btn-outline" title="Fazer upload" style="cursor:pointer; padding: 0.8rem;">
+                                <i class="ph ph-upload-simple"></i>
+                            </label>
+                            <input type="file" id="postImageFile" accept="image/*" style="display:none;">
+                        </div>
+                        <span id="postImageFileName" style="font-size:0.8rem; color:var(--text-secondary); margin-top: 0.3rem; display: block;"></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="postContent">Conteúdo</label>
+                        <div id="quillEditor" style="height: 250px; background: var(--bg-tertiary); color: var(--text-primary);"></div>
+                        <input type="hidden" id="postContent">
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: center; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="postIsDraft" style="width: auto;">
+                            <label for="postIsDraft" style="margin: 0; cursor: pointer;">Salvar como Rascunho</label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label for="postSchedule" style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">Agendar para:</label>
+                            <input type="datetime-local" id="postSchedule" style="padding: 0.3rem; border-radius: 4px; border: 1px solid var(--glass-border); background: var(--bg-tertiary); color: white; font-size: 0.8rem;">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline close-modal-btn">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitPostBtn">Publicar Artigo</button>
+                    </div>
+                </form>
+
+                <!-- Lado Direito: Preview Real-time -->
+                <div class="post-preview-pane">
+                    <div class="preview-header">
+                        <i class="ph ph-eye"></i> Visualização em tempo real
+                    </div>
+                    <div class="preview-content-card">
+                        <div class="preview-image-container">
+                            <img id="previewImg" src="https://images.unsplash.com/photo-1499951360447-b19be8fe80f5?q=80&w=800" alt="Preview Capa">
+                            <span id="previewCategory" class="preview-badge">Categoria</span>
+                        </div>
+                        <div class="preview-text">
+                            <h3 id="previewTitle">Título do seu artigo aparecerá aqui</h3>
+                            <div class="preview-meta">
+                                <span id="previewDate">30/04/2026</span> • <span id="previewAuthor">Você</span>
+                            </div>
+                            <div id="previewBody" class="preview-body-text">
+                                O conteúdo do seu artigo começará a aparecer aqui conforme você digita...
+                            </div>
+                            <div id="previewTags" class="preview-tags-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content profile-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2>Meu Perfil</h2>
+            <div id="userRoleBadge" class="role-badge">Cargo: Carregando...</div>
+            <form id="profileForm">
+                <div class="form-group" style="text-align: center; margin-bottom: 2rem; margin-top: 1rem;">
+                    <img id="profilePreview" src="https://ui-avatars.com/api/?name=User" alt="Preview" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-primary); margin-bottom: 1rem;">
+                </div>
+                <div class="form-group">
+                    <label for="profileName">Nome de Usuário</label>
+                    <input type="text" id="profileName" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileEmail">Email</label>
+                    <input type="email" id="profileEmail" required disabled title="Para alterar o e-mail, fale com o suporte"> <!-- Bloqueado por simplicidade/segurança do firebase -->
+                </div>
+                <div class="form-group">
+                    <label for="profileImage">Foto de Perfil (URL ou Arquivo)</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="url" id="profileImage" placeholder="https://exemplo.com/foto.jpg" style="flex: 1;">
+                        <label for="profileImageFile" class="btn btn-outline" title="Fazer upload" style="cursor:pointer; padding: 0.8rem;">
+                            <i class="ph ph-upload-simple"></i>
+                        </label>
+                        <input type="file" id="profileImageFile" accept="image/*" style="display:none;">
+                    </div>
+                    <span id="profileImageFileName" style="font-size:0.8rem; color:var(--text-secondary); margin-top: 0.3rem; display: block;"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="saveProfileBtn" style="width: 100%; padding: 1rem; font-size: 1rem; margin-top: 1rem;">Salvar Alterações</button>
+
+                <div class="author-dashboard" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--glass-border);">
+                    <div class="profile-tabs" style="display:flex; gap:1rem; margin-bottom:1rem;">
+                        <button type="button" class="tab active" data-tab="stats" style="background:none; border:none; color:inherit; cursor:pointer; font-weight:600;">Estatísticas</button>
+                        <button type="button" class="tab" data-tab="favorites" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-weight:600;">Meus Favoritos</button>
+                    </div>
+
+                    <div id="profileStatsView">
+                        <h4>Sua Performance</h4>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:1rem;">
+                            <div class="stat-card" style="background:var(--bg-tertiary); padding:1rem; border-radius:8px;">
+                                <span id="userTotalViews">0</span>
+                                <p style="font-size:0.75rem; color:var(--text-secondary);">Visualizações</p>
+                            </div>
+                            <div class="stat-card" style="background:var(--bg-tertiary); padding:1rem; border-radius:8px;">
+                                <span id="userTotalLikes">0</span>
+                                <p style="font-size:0.75rem; color:var(--text-secondary);">Curtidas</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="profileFavoritesView" style="display:none;">
+                        <h4>Artigos Favoritados</h4>
+                        <div id="favoritesList" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.5rem;">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 2rem;">
+                    <div class="danger-zone" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <button type="button" class="btn btn-outline" id="logoutBtn" style="color: #ef4444; border: none; background: none; padding: 0.5rem; gap: 0.5rem;">
+                            <i class="ph ph-sign-out"></i> Sair da Conta
+                        </button>
+                        <button type="button" class="btn btn-outline close-modal-btn" style="border: none; background: none; padding: 0.5rem; opacity: 0.7;">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard Modal -->
+    <div class="modal" id="adminModal">
+        <div class="modal-content admin-modal" style="max-width: 800px;">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2>Dashboard do Administrador</h2>
+            <div class="admin-panel">
+                <div class="admin-sidebar">
+                    <button class="admin-tab active" data-target="manageUsers">Gerenciar Usuários</button>
+                    <button class="admin-tab" data-target="stats">Estatísticas</button>
+                    <button class="admin-tab" data-target="adminReports">Denúncias</button>
+                </div>
+                <div class="admin-content">
+                    <!-- Manage Users -->
+                    <div id="manageUsers" class="admin-view active">
+                        <h3>Alterar Cargos de Usuários</h3>
+                        <form id="changeRoleForm" style="display: flex; gap: 1rem; margin-bottom: 2rem; align-items: flex-end;">
+                            <div class="form-group" style="flex: 2; margin: 0;">
+                                <label for="adminUserEmail">E-mail do Usuário</label>
+                                <input type="email" id="adminUserEmail" required placeholder="email@usuario.com">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin: 0;">
+                                <label for="adminUserRole">Novo Cargo</label>
+                                <select id="adminUserRole" required>
+                                    <option value="redator">Redator</option>
+                                    <option value="escritor">Escritor</option>
+                                    <option value="admin">Administrador</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-accent" style="height: 42px;">Atualizar</button>
+                        </form>
+                    </div>
+                    <!-- Stats -->
+                    <div id="stats" class="admin-view" style="display: none;">
+                        <h3>Estatísticas do Blog</h3>
+                        <div class="analytics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+                            <div class="stat-card" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Total de Views</span>
+                                <strong id="statTotalViews" style="font-size: 1.5rem; color: var(--accent-primary);">0</strong>
+                            </div>
+                            <div class="stat-card" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Total de Artigos</span>
+                                <strong id="statTotalPosts" style="font-size: 1.5rem; color: var(--accent-primary);">0</strong>
+                            </div>
+                        </div>
+                        <div style="margin-top: 2rem; background: var(--bg-tertiary); padding: 1rem; border-radius: 8px; height: 150px; display: flex; align-items: flex-end; gap: 0.5rem; justify-content: space-around;" id="analyticsChart">
+                            <!-- Bars will be injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Denúncias -->
+                    <div id="adminReports" class="admin-view" style="display: none;">
+                        <h3>Denúncias de Conteúdo</h3>
+                        <div id="reportsList" class="reports-list" style="margin-top: 1rem;">
+                            <!-- Populated by JS -->
+                            <p style="color: var(--text-secondary);">Nenhuma denúncia no momento.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Read Post Modal -->
+    <div class="modal" id="readPostModal">
+        <div class="modal-content read-post-modal">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            
+            <!-- Article Header -->
+            <div class="read-post-header">
+                <span id="readCategory" class="post-category">Categoria</span>
+                <h2 id="readTitle">Título do Artigo</h2>
+                <div class="hero-meta" style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    <img id="readAuthorImg" src="" alt="Author" style="width:30px; height:30px; border-radius:50%;">
+                    <span id="readAuthorName">Autor</span>
+                    <span>•</span>
+                    <span id="readDate">Data</span>
+                    <span>•</span>
+                    <span><i class="ph-fill ph-eye"></i> <span id="readViews">0</span></span>
+                </div>
+            </div>
+
+            <!-- Article Cover -->
+            <img id="readImage" src="" alt="Capa" style="width: 100%; max-height: 350px; object-fit: cover; border-radius: var(--border-radius); margin-bottom: 2rem;">
+
+            <!-- Article Content -->
+            <div id="readContent" class="read-post-body" style="color: var(--text-primary); font-size: 1.05rem; line-height: 1.8; margin-bottom: 3rem; white-space: pre-wrap;">
+                Conteúdo do artigo aqui...
+            </div>
+
+            <div class="interaction-bar" style="display: flex; gap: 1rem; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); padding: 1rem 0; margin-bottom: 2rem; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn-outline" id="likeBtn" style="padding: 0.5rem 1rem;">
+                    <i class="ph ph-heart" id="likeIcon"></i> <span id="likeCount">0</span>
+                </button>
+                <button class="btn btn-outline" id="bookmarkBtn" title="Salvar para depois" style="padding: 0.5rem 1rem;">
+                    <i id="bookmarkIcon" class="ph ph-bookmark-simple"></i>
+                </button>
+                <button class="btn btn-outline" onclick="document.getElementById('commentInput').focus()" style="padding: 0.5rem 1rem;">
+                    <i class="ph ph-chat-circle"></i> <span id="commentCount">0</span>
+                </button>
+                
+                <div class="rating-container" style="display:flex; align-items:center; gap:0.5rem; margin-left: auto;">
+                    <span style="font-size:0.8rem; color:var(--text-secondary);">Avalie:</span>
+                    <div class="stars" id="starRating" style="display:flex; gap:0.2rem; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;">
+                        <i class="ph ph-star" data-value="1"></i>
+                        <i class="ph ph-star" data-value="2"></i>
+                        <i class="ph ph-star" data-value="3"></i>
+                        <i class="ph ph-star" data-value="4"></i>
+                        <i class="ph ph-star" data-value="5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Posts -->
+            <div class="related-posts" style="margin-top: 4rem; border-top: 1px solid var(--glass-border); padding-top: 2rem;">
+                <h3 style="margin-bottom: 1.5rem;">Artigos Relacionados</h3>
+                <div id="relatedPostsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1.5rem;">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="comments-section">
+                <h3>Comentários</h3>
+                
+                <form id="commentForm" style="display: flex; gap: 1rem; margin-bottom: 2rem; margin-top: 1rem;">
+                    <input type="text" id="commentInput" placeholder="Deixe seu comentário..." required style="flex: 1; padding: 0.8rem; background: var(--bg-tertiary); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    <button type="submit" class="btn btn-accent">Enviar</button>
+                </form>
+
+                <div id="commentsList" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- Comments will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Notificações -->
+    <div class="modal" id="notifModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <h2 style="margin-bottom: 1.5rem; display:flex; align-items:center; gap:0.5rem;">
+                <i class="ph ph-bell"></i> Notificações
+            </h2>
+            <div id="notifList" style="max-height: 400px; overflow-y: auto;">
+                <p style="color:var(--text-secondary); text-align:center; padding: 2rem;">Nenhuma notificação.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Modal Perfil Público -->
+    <div class="modal" id="publicProfileModal">
+        <div class="modal-content profile-modal" style="max-width: 500px; text-align:center;">
+            <button class="close-modal"><i class="ph ph-x"></i></button>
+            <div style="padding: 2rem;">
+                <img id="pubAuthorImg" src="" alt="Author" style="width:100px; height:100px; border-radius:50%; margin-bottom:1rem; border:3px solid var(--accent-primary);">
+                <h2 id="pubAuthorName">Nome do Autor</h2>
+                <p id="pubAuthorRole" style="color:var(--accent-primary); font-weight:600; text-transform:uppercase; font-size:0.8rem; margin-bottom:1.5rem;">Cargo</p>
+                <div id="pubAuthorStats" style="display:flex; justify-content:center; gap:2rem; margin-bottom:2rem; padding:1rem; background:var(--bg-tertiary); border-radius:8px;">
+                    <div><strong id="pubPostCount">0</strong><p style="font-size:0.8rem; color:var(--text-secondary);">Artigos</p></div>
+                    <div><strong id="pubLikeCount">0</strong><p style="font-size:0.8rem; color:var(--text-secondary);">Curtidas</p></div>
+                </div>
+                <h3>Últimos Artigos</h3>
+                <div id="pubAuthorPosts" style="margin-top:1rem; text-align:left;">
+                    <!-- List -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Cursor -->
+    <div class="custom-cursor" id="cursor"></div>
+    <div class="custom-cursor-outline" id="cursorOutline"></div>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTopBtn" title="Voltar ao topo">
+        <i class="ph-fill ph-arrow-fat-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+</body>
+</html>
