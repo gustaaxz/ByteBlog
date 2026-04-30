@@ -14,6 +14,7 @@ import {
     fetchUserPosts, 
     ratePost, 
     ignoreReport, 
+    savePost,
     fetchNotifications, 
     markNotificationRead, 
     createNotification, 
@@ -172,30 +173,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Custom Cursor
     const cursor = document.getElementById('cursor');
-    const cursorOutline = document.getElementById('cursorOutline');
     
-    if(cursor && cursorOutline) {
+    if(cursor) {
         document.addEventListener('mousemove', (e) => {
-            cursor.style.left = e.clientX + 'px';
-            cursor.style.top = e.clientY + 'px';
-            
-            cursorOutline.animate({
-                left: e.clientX + 'px',
-                top: e.clientY + 'px'
-            }, { duration: 500, fill: 'forwards' });
+            cursor.style.left = `${e.clientX}px`;
+            cursor.style.top = `${e.clientY}px`;
         });
 
         // Hover effects for cursor
-        document.querySelectorAll('a, button, .post-card, .user-profile').forEach(el => {
+        document.querySelectorAll('a, button, .post-card, .user-profile, .logo, .nav-link').forEach(el => {
             el.addEventListener('mouseenter', () => {
-                cursor.style.transform = 'scale(2.5)';
-                cursorOutline.style.transform = 'scale(0.5)';
-                cursor.style.background = 'rgba(14, 165, 233, 0.4)';
+                cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                cursor.style.boxShadow = '0 0 20px var(--accent-primary)';
             });
             el.addEventListener('mouseleave', () => {
-                cursor.style.transform = 'scale(1)';
-                cursorOutline.style.transform = 'scale(1)';
-                cursor.style.background = 'var(--accent-primary)';
+                cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                cursor.style.boxShadow = '0 0 10px var(--accent-primary)';
             });
         });
     }
@@ -340,17 +333,26 @@ export const updateNavbarForUser = (user) => {
         }
 
         authSection.innerHTML = `
-            <div class="user-nav" style="display:flex; align-items:center; gap:1rem;">
-                ${isAdmin ? `<button class="btn btn-outline" id="adminBtn"><i class="ph ph-shield-check"></i> Admin</button>` : ''}
-                <div class="user-profile" onclick="toggleProfileModal(true)" style="cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
-                    <img src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}`}" style="width:32px; height:32px; border-radius:50%; border:2px solid var(--accent-primary);">
-                    <span style="font-size:0.9rem; font-weight:600; color:var(--text-primary);">${user.displayName || user.email.split('@')[0]}</span>
+            <div class="user-nav" style="display:flex; align-items:center; gap:1.2rem;">
+                ${isAdmin ? `<button class="btn btn-outline" id="adminBtn" title="Painel Admin"><i class="ph ph-shield-check"></i> Admin</button>` : ''}
+                <div class="user-profile" id="profileBtn" style="cursor:pointer; display:flex; align-items:center; gap:0.6rem; padding: 0.2rem 0.5rem; border-radius: 20px; transition: background 0.3s;">
+                    <img src="${user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || user.email}`}" style="width:34px; height:34px; border-radius:50%; border:2px solid var(--accent-primary); object-fit: cover;">
+                    <span style="font-size:0.95rem; font-weight:600; color:var(--text-primary);">${user.displayName || user.email.split('@')[0]}</span>
                 </div>
-                <button class="btn-icon" id="logoutBtn" title="Sair"><i class="ph ph-sign-out"></i></button>
             </div>
         `;
         
-        document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
+        // Hover effect for profile btn
+        const pBtn = document.getElementById('profileBtn');
+        if(pBtn) {
+            pBtn.onmouseenter = () => pBtn.style.background = 'var(--bg-tertiary)';
+            pBtn.onmouseleave = () => pBtn.style.background = 'none';
+        }
+
+        document.getElementById('profileBtn')?.addEventListener('click', () => {
+            loadAuthorDashboard();
+            toggleProfileModal(true);
+        });
         document.getElementById('adminBtn')?.addEventListener('click', () => {
             loadStats();
             toggleAdminModal(true);
@@ -617,8 +619,8 @@ export const renderMagazine = (posts, updateHero = true) => {
         `;
     }
 
-    // Feed Posts - Começa do índice 1 para não repetir o post de destaque (Hero)
-    const feedPosts = sortedPosts.slice(1, currentlyDisplayedCount);
+    // Feed Posts - Incluindo todos os posts (mesmo o do Hero) conforme solicitado
+    const feedPosts = sortedPosts.slice(0, currentlyDisplayedCount);
 
     if(updateHero) postsGrid.innerHTML = ''; // Limpa skeletons apenas se for um carregamento completo
     
@@ -793,6 +795,14 @@ window.openReadModal = async (postId) => {
             if(success) {
                 showToast(isBookmarked ? "Removido dos favoritos." : "Salvo nos favoritos!");
                 openReadModal(postId); // Refresh UI
+            }
+        };
+
+        // Report logic
+        document.getElementById('reportBtn').onclick = () => {
+            const reason = prompt("Por que você está denunciando este artigo?\n(Ex: Conteúdo ofensivo, Plágio, Erro técnico)");
+            if (reason) {
+                reportContent('post', postId, reason);
             }
         };
     }
@@ -1412,3 +1422,114 @@ document.querySelectorAll('.profile-tabs .tab').forEach(tab => {
         }
     };
 });
+
+
+const loadStats = async () => {
+    let totalViews = 0;
+    allPosts.forEach(p => totalViews += (p.views || 0));
+    
+    const viewsEl = document.getElementById('statTotalViews');
+    const postsEl = document.getElementById('statTotalPosts');
+    if(viewsEl) viewsEl.textContent = totalViews.toLocaleString();
+    if(postsEl) postsEl.textContent = allPosts.length;
+
+    // Simple Bar Chart
+    const chart = document.getElementById('analyticsChart');
+    if(chart) {
+        chart.innerHTML = '';
+        const categories = {};
+        allPosts.forEach(p => categories[p.category] = (categories[p.category] || 0) + 1);
+        
+        Object.entries(categories).forEach(([name, count]) => {
+            const height = (count / allPosts.length) * 100;
+            chart.innerHTML += `
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:0.5rem; height:100%; justify-content:flex-end;">
+                    <div style="width:20px; height:${height}%; background:var(--accent-primary); border-radius:4px 4px 0 0;" title="${name}: ${count}"></div>
+                    <span style="font-size:0.6rem; color:var(--text-secondary); writing-mode:vertical-lr; text-orientation:mixed;">${name}</span>
+                </div>
+            `;
+        });
+    }
+};
+
+const loadReports = async () => {
+    const list = document.getElementById('reportsList');
+    if(!list) return;
+    list.innerHTML = '<div class="loader"></div>';
+    
+    const reports = await fetchReports();
+    list.innerHTML = '';
+    
+    if(reports.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-secondary);">Nenhuma denúncia no momento.</p>';
+        return;
+    }
+
+    reports.forEach(r => {
+        const post = allPosts.find(p => p.id === r.postId);
+        list.innerHTML += `
+            <div class="report-item" style="background:var(--bg-tertiary); padding:1rem; border-radius:8px; margin-bottom:1rem; border:1px solid var(--glass-border);">
+                <div style="display:flex; justify-content:space-between; align-items:start;">
+                    <div>
+                        <h4 style="color:#ef4444; font-size:0.85rem; text-transform:uppercase;">Motivo: ${r.reason}</h4>
+                        <p style="font-size:0.9rem; margin:0.5rem 0;"><strong>Post:</strong> ${post ? post.title : 'Artigo não encontrado'}</p>
+                        <span style="font-size:0.75rem; color:var(--text-secondary);">Denunciado em: ${r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleDateString() : 'Recentemente'}</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button class="btn btn-outline" style="padding:0.4rem 0.8rem; font-size:0.75rem;" onclick="window.ignoreReportAction('${r.id}')">Ignorar</button>
+                        <button class="btn btn-accent" style="padding:0.4rem 0.8rem; font-size:0.75rem; background:#ef4444;" onclick="window.deleteReportedPostAction('${r.id}', '${r.postId}')">Excluir Post</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+};
+
+window.ignoreReportAction = async (id) => {
+    const success = await ignoreReport(id);
+    if(success) {
+        showToast("Denúncia ignorada.");
+        loadReports();
+    }
+};
+
+window.deleteReportedPostAction = async (reportId, postId) => {
+    if(confirm("Tem certeza que deseja excluir este artigo permanentemente?")) {
+        const success = await deletePost(postId);
+        if(success) {
+            await ignoreReport(reportId);
+            allPosts = allPosts.filter(p => p.id !== postId);
+            renderMagazine(allPosts);
+            loadReports();
+            loadStats();
+        }
+    }
+};
+
+// Admin Tab Switching
+document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.admin-view').forEach(v => v.style.display = 'none');
+        
+        tab.classList.add('active');
+        const target = tab.dataset.target;
+        const view = document.getElementById(target);
+        if(view) view.style.display = 'block';
+        
+        if(target === 'adminReports') loadReports();
+        if(target === 'stats') loadStats();
+    });
+});
+
+// Role Change Listener
+document.getElementById('changeRoleForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('adminUserEmail').value;
+    const role = document.getElementById('adminUserRole').value;
+    const success = await changeUserRole(email, role);
+    if(success) e.target.reset();
+});
+
+// Global close for Admin Modal
+document.querySelector('#adminModal .close-modal')?.addEventListener('click', () => toggleAdminModal(false));

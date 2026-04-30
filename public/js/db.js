@@ -372,3 +372,32 @@ export const addUserXP = async (userId, amount) => {
         console.error("Error adding XP:", error);
     }
 };
+
+// --- Article Management ---
+
+export const savePost = async (postData, postId = null) => {
+    try {
+        if (postId) {
+            await updateDoc(doc(db, 'posts', postId), {
+                ...postData,
+                updatedAt: serverTimestamp()
+            });
+            showToast("Artigo atualizado com sucesso!");
+        } else {
+            await addDoc(collection(db, 'posts'), {
+                ...postData,
+                createdAt: serverTimestamp(),
+                views: 0,
+                likes: []
+            });
+            showToast("Artigo publicado com sucesso!");
+            await addUserXP(auth.currentUser.uid, 50); // XP for posting
+        }
+        return true;
+    } catch (error) {
+        console.error("Error saving post:", error);
+        showToast("Erro ao salvar artigo.", "error");
+        return false;
+    }
+};
+
