@@ -1,4 +1,4 @@
-# [Clique aqui para acessar - Byte Blog 🚀](https://gustaaxz.github.io/ByteBlog/#)
+# [Clique aqui para acessar - Byte Blog 🚀](https://byteblog-c4f4a.firebaseapp.com/)
 
 O **Byte Blog** é uma plataforma moderna e responsiva de publicações, desenvolvida para entregar notícias sobre tecnologia, jogos, informática e o dia a dia. Com um design arrojado e recursos completos de integração, o blog permite que usuários autenticados criem, leiam e interajam com postagens dinâmicas em um ecossistema completo de portal.
 
